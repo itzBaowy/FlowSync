@@ -93,6 +93,10 @@ describe.sequential('Organization CRUD and tenant boundaries', () => {
     });
     expect(response.status).toBe(200);
     expect((await response.json()).data.allowAdminInvites).toBe(false);
+    await request(`/organizations/${organizationId}`, 0, 'PATCH', { name: 'Name only update' });
+    expect(
+      (await (await request(`/organizations/${organizationId}`)).json()).data.allowAdminInvites,
+    ).toBe(false);
     expect(
       (await request('/organizations', 0, 'POST', { name: 'Duplicate', slug: `test-${suffix}` }))
         .status,

@@ -16,6 +16,7 @@ export const organizationInputSchema = z
   .strict();
 export const updateOrganizationSchema = organizationInputSchema
   .partial()
+  .extend({ allowAdminInvites: z.boolean().optional() })
   .strict()
   .refine((data) => Object.keys(data).length > 0, 'Provide at least one field');
 export const memberRoleSchema = z.object({ role: z.enum(['ADMIN', 'MEMBER']) }).strict();

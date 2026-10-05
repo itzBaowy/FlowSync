@@ -106,6 +106,9 @@ describe.sequential('Workspace CRUD and private membership', () => {
     expect(
       (await request(`/workspaces/${workspaceId}`, 1, 'PATCH', { name: 'Product Studio' })).status,
     ).toBe(200);
+    expect((await (await request(`/workspaces/${workspaceId}`)).json()).data.description).toBe(
+      'Focused work',
+    );
   });
   it('adds only organization members and revokes private access immediately on removal', async () => {
     expect(

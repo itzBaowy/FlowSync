@@ -15,6 +15,10 @@ export const workspaceInputSchema = z
 export const workspaceUpdateSchema = workspaceInputSchema
   .omit({ organizationId: true })
   .partial()
+  .extend({
+    description: z.string().trim().max(10000).nullable().optional(),
+    icon: z.string().trim().max(32).nullable().optional(),
+  })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'Provide at least one field');
 export const workspaceListSchema = listQuerySchema.extend({ organizationId: z.string().uuid() });
@@ -67,6 +71,12 @@ export const projectInputSchema = projectFieldsSchema
   });
 export const projectUpdateSchema = projectFieldsSchema
   .partial()
+  .extend({
+    description: z.string().trim().max(10000).nullable().optional(),
+    status: projectStatusSchema.optional(),
+    startDate: z.string().datetime().nullable().optional(),
+    dueDate: z.string().datetime().nullable().optional(),
+  })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'Provide at least one field')
   .refine(validProjectDates, {

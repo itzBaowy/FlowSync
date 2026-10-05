@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  updateOrganizationSchema,
   projectInputSchema,
   projectUpdateSchema,
   workspaceUpdateSchema,
@@ -9,6 +10,11 @@ import {
   readsPrivateScope,
 } from '../src/modules/authorization/scope.policy';
 describe('project validation and scope policy', () => {
+  it('keeps omitted PATCH fields absent instead of applying create defaults', () => {
+    for (const schema of [updateOrganizationSchema, workspaceUpdateSchema, projectUpdateSchema])
+      expect(schema.parse({ name: 'Name only' })).toEqual({ name: 'Name only' });
+    expect(projectUpdateSchema.parse({ dueDate: null })).toEqual({ dueDate: null });
+  });
   it('requires explicit scope membership for ordinary members', () => {
     expect(readsPrivateScope('MEMBER', false)).toBe(false);
     expect(readsPrivateScope('MEMBER', true)).toBe(true);
