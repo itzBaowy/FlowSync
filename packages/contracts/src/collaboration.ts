@@ -41,3 +41,21 @@ export const activitySchema = z.object({
 export type Comment = z.infer<typeof commentSchema>;
 export type CommentList = z.infer<typeof commentListSchema>;
 export type ActivityList = z.infer<typeof activityListSchema>;
+export const attachmentListSchema = listQuerySchema.extend({
+  sort: z.literal('createdAt').default('createdAt'),
+});
+export const attachmentSchema = z.object({
+  id: z.string().uuid(),
+  taskId: z.string().uuid(),
+  filename: z.string(),
+  mimeType: z.string(),
+  size: z.number().int().positive(),
+  uploadedBy: publicActorSchema.nullable(),
+  createdAt: z.string().datetime(),
+  canDelete: z.boolean(),
+});
+export const attachmentDownloadSchema = z.object({
+  url: z.string().url(),
+  expiresIn: z.number().int().positive(),
+});
+export type AttachmentList = z.infer<typeof attachmentListSchema>;

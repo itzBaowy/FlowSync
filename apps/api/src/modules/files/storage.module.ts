@@ -13,7 +13,8 @@ import type { Environment } from '../../config/environment';
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE');
 export interface ObjectStorage {
   put(key: string, bytes: Buffer, contentType: string): Promise<void>;
-  signedUrl(key: string): Promise<string>;
+  signedUrl(key: string, filename?: string): Promise<string>;
+  remove(key: string): Promise<void>;
   discard(key: string): Promise<void>;
 }
 @Injectable()
@@ -58,18 +59,30 @@ class S3Storage implements ObjectStorage {
       { abortSignal: AbortSignal.timeout(10000) },
     );
   }
-  signedUrl(key: string) {
+  signedUrl(key: string, filename?: string) {
     return getSignedUrl(
       this.publicClient,
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ...(filename
+          ? {
+              ResponseContentDisposition: `attachment; filename="attachment"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`,
+              ResponseContentType: 'application/octet-stream',
+            }
+          : {}),
+      }),
       { expiresIn: 300 },
     );
   }
+  async remove(key: string) {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }), {
+      abortSignal: AbortSignal.timeout(5000),
+    });
+  }
   async discard(key: string) {
     try {
-      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }), {
-        abortSignal: AbortSignal.timeout(5000),
-      });
+      await this.remove(key);
     } catch {
       this.logger.warn({ objectKey: key }, 'Object cleanup deferred; run orphan reconciliation');
     }
