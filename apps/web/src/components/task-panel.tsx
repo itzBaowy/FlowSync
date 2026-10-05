@@ -9,6 +9,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Confirm, Field, Notice, selectClass } from './organization-ui';
 import { TaskForm } from './task-form';
+import { TaskConversation } from './task-conversation';
+import { ActivityFeed } from './activity-feed';
 export function TaskPanel({
   id,
   board,
@@ -269,6 +271,8 @@ export function TaskPanel({
               </form>
             )}
           </section>
+          <TaskConversation task={task} projectId={board.projectId} />
+          <ActivityFeed taskId={task.id} projectId={board.projectId} />
           {task.canArchive && (
             <div className="flex gap-3 border-t border-border pt-5">
               <Button

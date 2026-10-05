@@ -25,6 +25,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ThemeToggle } from './theme-toggle';
 import { NotificationBell } from './notification-bell';
+import { ActivityFeed } from './activity-feed';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
 import { ScopeMembers } from './scope-members';
 type ScopeKind = 'workspaces' | 'projects';
@@ -518,21 +519,9 @@ function ProjectOverview({ id }: { id: string }) {
               </div>
             ))}
           </div>
-          <h3 className="mt-6 text-sm font-semibold">Recent activity</h3>
-          {overview.data.recentActivities.length ? (
-            <ul className="mt-3 space-y-3 text-sm">
-              {overview.data.recentActivities.map((row) => (
-                <li key={row.id}>
-                  {row.actorName ?? 'Team'} · {row.action}{' '}
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(row.createdAt).toLocaleDateString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">No activity recorded yet.</p>
-          )}
+          <div className="mt-6">
+            <ActivityFeed projectId={id} />
+          </div>
         </>
       ) : (
         !overview.error && <p className="mt-4 text-sm">Loading overview…</p>

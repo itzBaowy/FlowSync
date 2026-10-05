@@ -106,6 +106,32 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await expect(memberPage).toHaveURL(/taskId=/);
     const memberPanel = memberPage.getByRole('dialog', { name: 'Task details', exact: true });
     await expect(memberPanel.getByLabel('Task title', { exact: true })).toBeEnabled();
+    const memberComments = memberPanel.getByRole('region', { name: 'Task comments', exact: true });
+    await memberComments
+      .getByLabel('Comment text', { exact: true })
+      .fill('Please review this release');
+    await memberComments.getByRole('button', { name: 'Mention a member', exact: true }).click();
+    await memberComments
+      .getByRole('button', { name: 'Mention Realtime Owner', exact: true })
+      .click();
+    await memberComments.getByRole('button', { name: 'Post comment', exact: true }).click();
+    const ownerComments = ownerPanel.getByRole('region', { name: 'Task comments', exact: true });
+    await expect(ownerComments).toContainText('Please review this release');
+    await expect(ownerComments).toContainText('@Realtime Owner');
+    const reply = memberComments.getByRole('article', {
+      name: 'Comment by Realtime Member',
+      exact: true,
+    });
+    await reply.getByRole('button', { name: 'Edit comment', exact: true }).click();
+    await reply.getByLabel('Edit comment text').fill('Revised release feedback');
+    await reply.getByRole('button', { name: 'Save comment', exact: true }).click();
+    await expect(ownerComments).toContainText('Revised release feedback');
+    await expect(
+      ownerPanel.getByRole('region', { name: 'Task activity', exact: true }),
+    ).toContainText('comment updated');
+    await ownerComments.getByRole('button', { name: 'Delete comment', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(reply).toHaveCount(0);
     await ownerPanel.getByLabel('Task title', { exact: true }).fill('Live delivery updated');
     await ownerPanel.getByRole('button', { name: 'Save task', exact: true }).click();
     await expect(memberPanel.getByLabel('Task title', { exact: true })).toHaveValue(
@@ -116,6 +142,14 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await expect(memberPanel.getByText(/DONE \/ Version/)).toBeVisible();
     await ownerPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Notifications (1 unread)', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Notifications (1 unread)', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Notifications', exact: true })).toContainText(
+      'mentioned you in "Live delivery"',
+    );
+    await page.getByRole('button', { name: 'Close notifications', exact: true }).click();
     await context.setOffline(true);
     await expect(memberPage.getByLabel('Realtime status')).toContainText('disconnected');
     await expect(page.getByLabel('Online board members')).toContainText('1 online', {

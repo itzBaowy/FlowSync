@@ -9,7 +9,16 @@ import {
   type TaskMove,
 } from '@flowsync/contracts';
 import { errorMessage } from './organizations';
-export const kanbanKeys = ['boards', 'board', 'task', 'tasks', 'labels', 'project-overview'];
+export const kanbanKeys = [
+  'boards',
+  'board',
+  'task',
+  'tasks',
+  'labels',
+  'project-overview',
+  'comments',
+  'activities',
+];
 export function useKanbanAction() {
   const client = useQueryClient();
   const invalidate = () =>
