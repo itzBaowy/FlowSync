@@ -28,6 +28,15 @@ export const environmentSchema = z
       .refine((value) => !value.startsWith('CHANGE_ME')),
     MINIO_BUCKET: z.string().min(3),
     S3_REGION: z.string().default('us-east-1'),
+    EMAIL_ENCRYPTION_KEY: z.string().regex(/^[a-f0-9]{64}$/),
+    EMAIL_FROM: z.string().email().default('no-reply@flowsync.local'),
+    SMTP_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z
+        .string()
+        .regex(/^smtps?:\/\//)
+        .default('smtp://localhost:1025'),
+    ),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   })
   .superRefine((value, ctx) => {

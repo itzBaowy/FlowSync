@@ -9,6 +9,9 @@ import { TokenService } from '../src/modules/auth/token.service';
 import { validateEnvironment, type Environment } from '../src/config/environment';
 
 const base: Environment = {
+  EMAIL_ENCRYPTION_KEY: 'c'.repeat(64),
+  EMAIL_FROM: 'no-reply@flowsync.local',
+  SMTP_URL: 'smtp://localhost:1025',
   NODE_ENV: 'test',
   API_PORT: 4010,
   WEB_URL: 'http://localhost:3000',

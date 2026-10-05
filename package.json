@@ -22,11 +22,12 @@
     "db:validate": "npm run db:validate -w @flowsync/api",
     "db:migrate": "npm run db:migrate -w @flowsync/api",
     "db:deploy": "npm run db:deploy -w @flowsync/api",
-    "infra:up": "docker compose up -d postgres redis minio minio-init",
+    "infra:up": "docker compose up -d postgres redis minio minio-init mailpit",
     "infra:down": "docker compose down",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "worker:dev": "npm run worker:dev -w @flowsync/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

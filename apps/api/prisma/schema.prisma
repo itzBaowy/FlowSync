@@ -145,10 +145,22 @@ model Invitation {
   invitedById    String @db.Uuid
   createdAt      DateTime @default(now())
   acceptedAt     DateTime?
+  delivery       EmailOutbox?
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy      User @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
   @@index([organizationId, email, status])
   @@index([status, expiresAt])
+}
+
+model EmailOutbox {
+  id               String @id @default(uuid()) @db.Uuid
+  invitationId     String @unique @db.Uuid
+  encryptedPayload String?
+  enqueuedAt       DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime @default(now())
+  invitation       Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  @@index([deliveredAt, createdAt])
 }
 
 model Workspace {
