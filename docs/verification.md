@@ -1,6 +1,6 @@
-# Phase 3 verification — 06/10/2026
+# Phase 4 verification — 06/10/2026
 
-Đã hoàn thành Phase 1–3 theo Requirements.md, gồm organization/logo/invitations và private workspace/project CRUD, members, project owner transfer, status/date validation và overview. Chưa hoàn thành toàn bộ MVP ở mục 34; Kanban/realtime/collaboration ở các phase sau.
+Đã hoàn thành Phase 1–4 theo Requirements.md, gồm organization/logo/invitations và private workspace/project CRUD, members, project owner transfer, status/date validation và overview. Chưa hoàn thành toàn bộ MVP ở mục 34; Realtime/collaboration ở các phase sau.
 
 | Check                       | Kết quả                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -9,9 +9,9 @@
 | TypeScript strict typecheck | Pass cho contracts, API, web                                                                      |
 | ESLint / Prettier           | Pass                                                                                              |
 | Production build            | Pass cho Next.js và NestJS                                                                        |
-| Unit/security tests         | 14 pass: auth, RBAC, scope policy, PATCH omission and encryption                                  |
-| HTTP integration tests      | 33 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
-| Browser tests               | 7 pass on local builds and Linux Docker containers                                                |
+| Unit/security tests         | 16 pass: auth, RBAC, scope policy, PATCH omission, encryption and Kanban contracts                |
+| HTTP integration tests      | 44 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
+| Browser tests               | 8 pass on local builds and Linux Docker containers                                                |
 | Docker targets              | API, web, migrator, worker và source-built MinIO build thành công                                 |
 | Compose runtime             | API/PostgreSQL/Redis/MinIO/Mailpit healthy; web/worker chạy; init exit 0                          |
 
@@ -26,3 +26,5 @@ Sau khi người dùng khắc phục dung lượng ổ C, đã build và chạy 
 Repository đã kết nối [GitHub FlowSync](https://github.com/itzBaowy/FlowSync), branch `main`; commit/push theo từng lát. CI Linux của code Phase 2 ở commit `160d2bf` [đã xanh](https://github.com/itzBaowy/FlowSync/actions/runs/37342707321). Các commit mới tự chạy CI. Chưa provision cloud deployment. Cross-tab refresh coordination, password recovery/email verification, dead-letter tooling và orphan object reconciliation còn ở các milestone hardening.
 
 Phase 3 verifies workspace/project CRUD, private memberships, persisted date invariants, ownership concurrency, public profiles, descendant cleanup, structural delete protection and actual overview data. Browser tests cover CRUD/mobile and two-account membership/owner transfer/access revocation. Delivery outboxes are isolated by NODE_ENV.
+
+Phase 4 adds scoped board/column/task CRUD, multiple assignees, project labels, checklist versions, archive/restore and transactional fractional ranking. Browser verification covers pointer and keyboard moves, empty columns, persistent ordering, optimistic state before a held response, 409 rollback and mobile layout. API tests include concurrent moves/edits/reorders and private scope boundaries. Docker API/web/migrator/worker and the browser suite are verified at this milestone.

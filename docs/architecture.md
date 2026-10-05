@@ -45,7 +45,7 @@ apps/
         organizations/ CRUD, members, invitation, logo
         files/         private S3 adapter cho logo
         queue/         encrypted email outbox, BullMQ + SMTP worker
-        workspaces/ projects/ boards/ tasks/ (milestones sau)
+        workspaces/ projects/ kanban/ workspace/project/board/task use cases
         comments/ notifications/ realtime/ activity-log/ ai/ (sau)
     test/              integration + HTTP e2e
 packages/contracts/    Zod schemas + types dùng chung, không chứa secrets
@@ -58,7 +58,7 @@ Chỉ tạo module khi có hành vi thực tế; không tạo hàng loạt modul
 
 ## C. Database design
 
-Schema Prisma được chuẩn bị cho toàn domain. Phase 3 expose auth/health, organization/members/invitations/logo và workspace/project/members/overview. Board/task/realtime chưa có endpoint.
+Schema Prisma được chuẩn bị cho toàn domain. Phase 4 expose auth/health, organization/members/invitations/logo, workspace/project/members/overview và Kanban boards/columns/tasks/labels/checklists. Realtime và collaboration tiếp theo.
 
 | Entity                            | Relationship / constraint chính                                                                       |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -104,7 +104,7 @@ Chặn remove/demote owner cuối cùng trong transaction, owner transfer atomic
 
 ## F. Realtime và ordering
 
-Task move gửi taskId, targetColumnId, before/after task IDs, expected board revision, client mutation ID. Service xác minh membership và cùng board; transaction khóa board row (`FOR UPDATE`), tính Decimal rank, reindex khi gap nhỏ, update task + board revision + activity. Request revision cũ nhận 409 và snapshot mới, không âm thầm overwrite.
+Task move gửi taskId, columnId, beforeTaskId, expectedVersion và expectedRevision. Service xác minh membership và cùng board; transaction khóa organization → workspace → project → board (`FOR UPDATE`), tính Decimal rank, reindex khi gap hết precision, update task version + board revision. Request revision cũ nhận 409; client rollback và refetch snapshot. Activity và realtime được nối ở Phase 5–6.
 
 Publish chỉ sau commit; sự kiện gồm boardId, revision, mutationId, task changes. UI optimistic + rollback on failure; dedupe theo mutationId, ignore revision cũ; revision gap hoặc reconnect thì refetch. Gateway xác thực JWT, kiểm tra permission khi join room; không cho client chọn tùy ý room. Token expiry khiến connection cần re-authentication. Redis Socket.IO adapter fanout nhiều replicas; Redis TTL heartbeat cho presence, không chỉ dùng process memory. Outbox là nâng cấp khi cần đảm bảo delivery giữa commit và emit.
 
@@ -116,7 +116,7 @@ Phase 2 có worker thật cho invitation email. Token acceptance chỉ lưu SHA-
 
 ## H. MVP roadmap
 
-Chi tiết và acceptance criteria ở [roadmap.md](roadmap.md). Phase 1–3 đã có hành vi thật, kiểm thử và commits theo module. Tiếp theo Kanban → Realtime → Collaboration. AI chỉ sau toàn bộ luồng MVP ở mục 34.
+Chi tiết và acceptance criteria ở [roadmap.md](roadmap.md). Phase 1–4 đã có hành vi thật, kiểm thử và commits theo module. Tiếp theo Realtime → Collaboration. AI chỉ sau toàn bộ luồng MVP ở mục 34.
 
 ## I. Risks và mitigation
 
