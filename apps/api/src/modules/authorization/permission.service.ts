@@ -64,7 +64,12 @@ export class PermissionService {
       include: { members: { where: { userId }, select: { userId: true } } },
     });
     if (!project) throw new NotFoundException('Project not found');
-    const actor = await this.requireWorkspace(userId, project.workspaceId, 'read', db);
+    const actor = await this.requireWorkspace(userId, project.workspaceId, 'read', db).catch(
+      (error: unknown) => {
+        if (error instanceof NotFoundException) throw new NotFoundException('Project not found');
+        throw error;
+      },
+    );
     if (!readsPrivateScope(actor.role, project.members.length > 0))
       throw new NotFoundException('Project not found');
     const canManage = actor.canManage || project.ownerId === userId;

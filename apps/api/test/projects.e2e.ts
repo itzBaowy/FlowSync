@@ -96,7 +96,10 @@ describe.sequential('Project CRUD, membership and overview', () => {
     expect(response.status).toBe(201);
     projectId = projectSchema.parse((await response.json()).data).id;
     expect((await request(`/projects/${projectId}`, 2)).status).toBe(404);
-    expect((await request(`/projects/${projectId}`, 3)).status).toBe(404);
+    const foreign = await request(`/projects/${projectId}`, 3);
+    const missing = await request(`/projects/${randomUUID()}`, 3);
+    expect(foreign.status).toBe(404);
+    expect((await foreign.json()).message).toBe((await missing.json()).message);
     expect((await request('/projects/not-a-uuid')).status).toBe(400);
     expect(
       (
