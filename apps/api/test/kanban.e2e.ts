@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { boardSnapshotSchema } from '@flowsync/contracts';
+import { boardSnapshotSchema, taskDetailSchema, taskSchema } from '@flowsync/contracts';
 import { startTestApi } from './helpers/api-server';
 config({ path: '../../.env', quiet: true });
 const prisma = new PrismaClient({
@@ -165,5 +165,218 @@ describe.sequential('Kanban board boundaries and atomic ordering', () => {
     ).json();
     expect((await request(`/boards/${extra.data.id}`, 0, 'DELETE')).status).toBe(200);
     expect((await request(`/boards/${extra.data.id}`)).status).toBe(404);
+  });
+});
+let taskId: string;
+async function currentTask() {
+  return taskDetailSchema.parse((await (await request(`/tasks/${taskId}`, 1)).json()).data);
+}
+async function revision() {
+  return (await (await request(`/boards/${boardId}`)).json()).data.revision as number;
+}
+describe.sequential('Task permissions, optimistic concurrency and ranking', () => {
+  it('allows project members to create tasks and validates all referenced scopes', async () => {
+    const input = {
+      columnId: columns[0]!.id,
+      title: 'Ship release',
+      priority: 'HIGH',
+      description: 'Careful rollout',
+      dueDate: '2026-10-10T00:00:00.000Z',
+      assigneeIds: [users[1]!.id],
+    };
+    expect((await request('/tasks', 3, 'POST', input)).status).toBe(404);
+    expect((await request('/tasks', 1, 'POST', { ...input, position: 1 })).status).toBe(400);
+    expect(
+      (await request('/tasks', 1, 'POST', { ...input, assigneeIds: [users[3]!.id] })).status,
+    ).toBe(400);
+    const other = await prisma.project.create({
+      data: { workspaceId, ownerId: users[0]!.id, name: 'Other private project' },
+    });
+    const foreignLabel = await prisma.label.create({
+      data: { projectId: other.id, name: 'Foreign', color: '#123456' },
+    });
+    expect(
+      (await request('/tasks', 1, 'POST', { ...input, labelIds: [foreignLabel.id] })).status,
+    ).toBe(400);
+    const response = await request('/tasks', 1, 'POST', input);
+    expect(response.status).toBe(201);
+    const task = taskSchema.parse((await response.json()).data);
+    taskId = task.id;
+    expect(task.canEdit).toBe(true);
+    expect(task.version).toBe(0);
+    expect(task.assignees.map((user) => user.id)).toEqual([users[1]!.id]);
+    expect(JSON.stringify(task)).not.toContain('passwordHash');
+    expect((await request(`/tasks/${taskId}`, 3)).status).toBe(404);
+    const list = await (
+      await request(
+        `/tasks?boardId=${boardId}&priority=HIGH&assigneeId=${users[1]!.id}&search=rollout&limit=1`,
+        2,
+      )
+    ).json();
+    expect(list.meta.total).toBe(1);
+    expect(list.data[0].canEdit).toBe(false);
+  });
+  it('protects edits and detects simultaneous writes without resetting unspecified fields', async () => {
+    expect(
+      (await request(`/tasks/${taskId}`, 2, 'PATCH', { title: 'No', expectedVersion: 0 })).status,
+    ).toBe(403);
+    const responses = await Promise.all([
+      request(`/tasks/${taskId}`, 1, 'PATCH', { title: 'Release v2', expectedVersion: 0 }),
+      request(`/tasks/${taskId}`, 1, 'PATCH', { title: 'Release v3', expectedVersion: 0 }),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const task = await currentTask();
+    expect(task.version).toBe(1);
+    expect(task.priority).toBe('HIGH');
+    expect(task.dueDate).toBe('2026-10-10T00:00:00.000Z');
+    expect(task.description).toBe('Careful rollout');
+    expect(
+      (
+        await request(`/tasks/${taskId}`, 1, 'PATCH', {
+          assigneeIds: [users[1]!.id, users[2]!.id],
+          expectedVersion: task.version,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await request(`/tasks/${taskId}`, 2, 'PATCH', { priority: 'URGENT', expectedVersion: 2 }))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await request(`/tasks/${taskId}/archive`, 2, 'PATCH', {
+          archived: true,
+          expectedVersion: 3,
+        })
+      ).status,
+    ).toBe(403);
+  });
+  it('moves across columns once for simultaneous clients and maintains relative order', async () => {
+    const task = await currentTask();
+    const destination = await prisma.task.create({
+      data: { columnId: columns[1]!.id, title: 'Destination', position: 1024 },
+    });
+    const body = {
+      columnId: columns[1]!.id,
+      beforeTaskId: destination.id,
+      expectedVersion: task.version,
+      expectedRevision: await revision(),
+    };
+    const responses = await Promise.all([
+      request(`/tasks/${taskId}/move`, 1, 'PATCH', body),
+      request(`/tasks/${taskId}/move`, 2, 'PATCH', body),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const saved = await currentTask();
+    expect(saved.columnId).toBe(columns[1]!.id);
+    expect(saved.status).toBe('IN_PROGRESS');
+    const list = await (
+      await request(`/tasks?boardId=${boardId}&columnId=${columns[1]!.id}`)
+    ).json();
+    expect(list.data.map((row: { id: string }) => row.id)).toEqual([taskId, destination.id]);
+    const foreignBoard = await prisma.board.create({
+      data: {
+        projectId,
+        name: 'Another board',
+        columns: { create: { name: 'Other', position: 0 } },
+      },
+      include: { columns: true },
+    });
+    expect(
+      (
+        await request(`/tasks/${taskId}/move`, 1, 'PATCH', {
+          ...body,
+          expectedVersion: saved.version,
+          expectedRevision: await revision(),
+          columnId: foreignBoard.columns[0]!.id,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(`/tasks/${taskId}/move`, 1, 'PATCH', {
+          ...body,
+          expectedVersion: saved.version,
+          expectedRevision: await revision(),
+          beforeTaskId: taskId,
+        })
+      ).status,
+    ).toBe(400);
+    await prisma.task.delete({ where: { id: destination.id } });
+  });
+  it('rebalances exhausted fractional gaps while retaining archived task positions', async () => {
+    const first = await prisma.task.create({
+      data: {
+        columnId: columns[2]!.id,
+        title: 'Archived rank',
+        position: '0.0000000001',
+        archivedAt: new Date(),
+      },
+    });
+    const next = await prisma.task.create({
+      data: { columnId: columns[2]!.id, title: 'Tiny gap', position: '0.0000000002' },
+    });
+    const task = await currentTask();
+    const response = await request(`/tasks/${taskId}/move`, 1, 'PATCH', {
+      columnId: columns[2]!.id,
+      beforeTaskId: next.id,
+      expectedVersion: task.version,
+      expectedRevision: await revision(),
+    });
+    expect(response.status).toBe(200);
+    const rows = await prisma.task.findMany({
+      where: { columnId: columns[2]!.id },
+      orderBy: { position: 'asc' },
+    });
+    expect(rows.map((row) => row.id)).toEqual([first.id, taskId, next.id]);
+    expect(new Set(rows.map((row) => row.position.toString())).size).toBe(3);
+    const snapshot = boardSnapshotSchema.parse(
+      (await (await request(`/boards/${boardId}`)).json()).data,
+    );
+    expect(snapshot.columns.find((column) => column.id === columns[2]!.id)!.totalTasks).toBe(2);
+    await prisma.task.deleteMany({ where: { id: { in: [first.id, next.id] } } });
+  });
+  it('archives, restores and deletes with version checks and scope permissions', async () => {
+    let task = await currentTask();
+    expect(
+      (
+        await request(`/tasks/${taskId}/archive`, 1, 'PATCH', {
+          archived: true,
+          expectedVersion: task.version,
+        })
+      ).status,
+    ).toBe(200);
+    task = await currentTask();
+    expect(task.archivedAt).not.toBeNull();
+    expect(
+      (
+        await request(`/tasks/${taskId}`, 1, 'PATCH', {
+          title: 'No',
+          expectedVersion: task.version,
+        })
+      ).status,
+    ).toBe(409);
+    const list = await (await request(`/tasks?boardId=${boardId}&archived=true`)).json();
+    expect(list.meta.total).toBe(1);
+    expect(
+      (
+        await request(`/tasks/${taskId}/archive`, 0, 'PATCH', {
+          archived: false,
+          expectedVersion: task.version,
+        })
+      ).status,
+    ).toBe(200);
+    task = await currentTask();
+    expect(
+      (await request(`/tasks/${taskId}`, 2, 'DELETE', { expectedVersion: task.version })).status,
+    ).toBe(403);
+    expect(
+      (await request(`/tasks/${taskId}`, 1, 'DELETE', { expectedVersion: task.version - 1 }))
+        .status,
+    ).toBe(409);
+    expect(
+      (await request(`/tasks/${taskId}`, 1, 'DELETE', { expectedVersion: task.version })).status,
+    ).toBe(200);
+    expect((await request(`/tasks/${taskId}`, 1)).status).toBe(404);
   });
 });

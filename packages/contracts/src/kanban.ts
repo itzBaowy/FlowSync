@@ -71,6 +71,7 @@ export const taskListSchema = listQuerySchema.extend({
   priority: taskPrioritySchema.optional(),
   assigneeId: uuid.optional(),
   sort: z.enum(['position', 'createdAt', 'dueDate', 'priority']).default('position'),
+  order: z.enum(['asc', 'desc']).default('asc'),
 });
 export const labelInputSchema = z
   .object({
