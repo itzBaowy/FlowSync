@@ -172,7 +172,7 @@ export function BoardHub() {
                   Refreshing board...
                 </p>
               )}
-              {detail.data ? (
+              {detail.data && !detail.error ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-xl font-semibold">{detail.data.name}</h2>

@@ -20,6 +20,9 @@ export class ApiError extends Error {
 export function setAccessToken(token: string | null) {
   accessToken = token;
 }
+export function getAccessToken() {
+  return accessToken;
+}
 async function decodeEnvelope<T>(response: Response): Promise<ApiResponse<T>> {
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
