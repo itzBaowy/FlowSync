@@ -14,6 +14,7 @@ const suffix = randomUUID();
 const accounts: { id: string; token: string; email: string }[] = [];
 let api: Awaited<ReturnType<typeof startTestApi>>;
 let organizationId: string;
+let membershipOrg: string;
 async function request(path: string, actor = 0, method = 'GET', body?: unknown) {
   return fetch(`${api.baseUrl}${path}`, {
     method,
@@ -100,5 +101,69 @@ describe.sequential('Organization CRUD and tenant boundaries', () => {
     expect((await request(`/organizations/${organizationId}`, 1, 'DELETE')).status).toBe(403);
     expect((await request(`/organizations/${organizationId}`, 0, 'DELETE')).status).toBe(200);
     expect((await request(`/organizations/${organizationId}`)).status).toBe(404);
+  });
+  it('lists public member profiles and lets only owner manage roles', async () => {
+    const created = await request('/organizations', 0, 'POST', {
+      name: 'Member team',
+      slug: `test-${suffix}-members`,
+    });
+    membershipOrg = (await created.json()).data.id;
+    await prisma.organizationMember.createMany({
+      data: [
+        { organizationId: membershipOrg, userId: accounts[1]!.id, role: 'MEMBER' },
+        { organizationId: membershipOrg, userId: accounts[3]!.id, role: 'ADMIN' },
+      ],
+    });
+    const memberList = await request(`/organizations/${membershipOrg}/members`, 1);
+    const body = await memberList.json();
+    expect(body.data).toHaveLength(3);
+    expect(JSON.stringify(body)).not.toContain('passwordHash');
+    expect((await request(`/organizations/${membershipOrg}/members`, 2)).status).toBe(404);
+    const target = `/organizations/${membershipOrg}/members/${accounts[1]!.id}`;
+    expect((await request(target, 3, 'PATCH', { role: 'ADMIN' })).status).toBe(403);
+    expect((await request(target, 0, 'PATCH', { role: 'OWNER' })).status).toBe(400);
+    expect((await request(target, 0, 'PATCH', { role: 'ADMIN' })).status).toBe(200);
+  });
+  it('protects owner membership and removes a member from resource scopes', async () => {
+    const ownerPath = `/organizations/${membershipOrg}/members/${accounts[0]!.id}`;
+    expect((await request(ownerPath, 0, 'PATCH', { role: 'MEMBER' })).status).toBe(409);
+    expect((await request(ownerPath, 0, 'DELETE')).status).toBe(409);
+    expect(
+      (await request(`/organizations/${membershipOrg}/members/${accounts[1]!.id}`, 0, 'DELETE'))
+        .status,
+    ).toBe(200);
+    expect((await request(`/organizations/${membershipOrg}`, 1)).status).toBe(404);
+    expect(
+      (
+        await request(`/organizations/${membershipOrg}/transfer-ownership`, 0, 'POST', {
+          userId: accounts[2]!.id,
+        })
+      ).status,
+    ).toBe(404);
+    await prisma.organizationMember.create({
+      data: { organizationId: membershipOrg, userId: accounts[1]!.id, role: 'MEMBER' },
+    });
+  });
+  it('serializes competing ownership transfers and immediately enforces the new role', async () => {
+    const responses = await Promise.all([
+      request(`/organizations/${membershipOrg}/transfer-ownership`, 0, 'POST', {
+        userId: accounts[1]!.id,
+      }),
+      request(`/organizations/${membershipOrg}/transfer-ownership`, 0, 'POST', {
+        userId: accounts[3]!.id,
+      }),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 403]);
+    const organization = await prisma.organization.findUniqueOrThrow({
+      where: { id: membershipOrg },
+    });
+    const owners = await prisma.organizationMember.findMany({
+      where: { organizationId: membershipOrg, role: 'OWNER' },
+    });
+    expect(owners).toHaveLength(1);
+    expect(owners[0]!.userId).toBe(organization.ownerId);
+    expect((await request(`/organizations/${membershipOrg}`, 0, 'DELETE')).status).toBe(403);
+    const newOwner = accounts.findIndex((account) => account.id === organization.ownerId);
+    expect((await request(`/organizations/${membershipOrg}`, newOwner, 'DELETE')).status).toBe(200);
   });
 });
