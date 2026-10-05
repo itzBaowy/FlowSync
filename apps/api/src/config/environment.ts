@@ -34,7 +34,7 @@ export const environmentSchema = z
     SMTP_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),
       z
-        .string()
+        .url()
         .regex(/^smtps?:\/\//)
         .default('smtp://localhost:1025'),
     ),
