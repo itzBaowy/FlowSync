@@ -18,6 +18,7 @@ export const kanbanKeys = [
   'project-overview',
   'comments',
   'activities',
+  'attachments',
 ];
 export function useKanbanAction() {
   const client = useQueryClient();
@@ -37,7 +38,9 @@ export function useKanbanAction() {
     }) => ({
       data: await api<unknown>(path, {
         method,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(body === undefined
+          ? {}
+          : { body: body instanceof FormData ? body : JSON.stringify(body) }),
       }),
       message,
     }),

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { hash } from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -85,6 +86,25 @@ test('board management, task details, drag and drop, keyboard sorting and rollba
     await expect(panel.getByLabel('Task title', { exact: true })).toHaveValue(
       'Fix launch checklist',
     );
+    const files = panel.getByRole('region', { name: 'Task attachments', exact: true });
+    const pdf = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF');
+    await files
+      .getByLabel('Choose task attachment')
+      .setInputFiles({ name: 'release-notes.pdf', mimeType: 'application/pdf', buffer: pdf });
+    await files.getByRole('button', { name: 'Upload attachment', exact: true }).click();
+    const attachment = files.getByRole('article', {
+      name: 'Attachment release-notes.pdf',
+      exact: true,
+    });
+    await expect(attachment).toBeVisible();
+    const downloadReady = page.waitForEvent('download');
+    await attachment.getByRole('button', { name: 'Download file', exact: true }).click();
+    const download = await downloadReady;
+    expect(download.suggestedFilename()).toBe('release-notes.pdf');
+    expect(await readFile((await download.path())!)).toEqual(pdf);
+    await attachment.getByRole('button', { name: 'Remove file', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(attachment).toHaveCount(0);
     await panel.getByLabel('New checklist title').fill('Release checks');
     await panel.getByRole('button', { name: 'Add checklist', exact: true }).click();
     await panel.getByLabel('New item in Release checks').fill('Review API');
