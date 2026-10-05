@@ -13,6 +13,7 @@ import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { HttpErrorFilter } from './common/http';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
+import { ProjectsModule } from './modules/projects/projects.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     HealthModule,
     OrganizationsModule,
     WorkspacesModule,
+    ProjectsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },
