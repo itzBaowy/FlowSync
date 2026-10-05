@@ -19,6 +19,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
 import { ThemeToggle } from './theme-toggle';
+import { NotificationBell } from './notification-bell';
 import { TaskBoard } from './task-board';
 import { LabelSettings } from './label-settings';
 export function BoardHub() {
@@ -107,7 +108,10 @@ export function BoardHub() {
         >
           Back to {project.data?.name ?? 'project'}
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <ThemeToggle />
+        </div>
       </header>
       <main className="mx-auto max-w-[1600px] space-y-6 px-5 py-8 sm:px-10">
         <div className="flex flex-wrap items-center justify-between gap-4">

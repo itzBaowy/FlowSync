@@ -10,6 +10,7 @@ import { paged, useOrganizationAction, errorMessage } from '@/lib/organizations'
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ThemeToggle } from './theme-toggle';
+import { NotificationBell } from './notification-bell';
 import { Field, Notice, Pager, selectClass } from './organization-ui';
 import { OrganizationSettings } from './organization-settings';
 import { OrganizationMembers } from './organization-members';
@@ -89,7 +90,10 @@ export function OrganizationHub() {
           <ArrowLeft size={16} />
           Overview
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <ThemeToggle />
+        </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10">
         <div className="flex flex-wrap items-start justify-between gap-4">

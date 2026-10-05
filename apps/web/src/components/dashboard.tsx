@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { ApiError, api, refreshSession, setAccessToken } from '@/lib/api';
 import { Button } from './ui/button';
 import { ThemeToggle } from './theme-toggle';
+import { NotificationBell } from './notification-bell';
 import { Logo } from './logo';
 
 export function Dashboard() {
@@ -150,7 +151,7 @@ export function Dashboard() {
         <div className="mt-auto rounded-lg border border-border bg-card p-3">
           <p className="text-xs font-medium">Built for what’s next</p>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            Kanban boards are coming next.
+            Boards, tasks, and live updates are ready.
           </p>
         </div>
         <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
@@ -189,7 +190,10 @@ export function Dashboard() {
               <span className="text-foreground">Overview</span>
             </span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <ThemeToggle />
+          </div>
         </header>
         <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10 lg:py-14">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -293,7 +297,19 @@ export function Dashboard() {
                 {
                   number: '04',
                   title: 'Find your team’s flow',
-                  text: 'Kanban boards, tasks, and realtime collaboration.',
+                  text: 'Kanban boards, tasks, assignees, labels, and checklists.',
+                  done: true,
+                },
+                {
+                  number: '05',
+                  title: 'Stay in sync',
+                  text: 'Live board updates, online presence, and personal notifications.',
+                  done: true,
+                },
+                {
+                  number: '06',
+                  title: 'Keep the conversation close',
+                  text: 'Comments, mentions, attachments, and project activity.',
                   done: false,
                 },
               ].map((step) => (

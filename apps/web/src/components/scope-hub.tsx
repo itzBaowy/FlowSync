@@ -24,6 +24,7 @@ import { useScopeAction } from '@/lib/scopes';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ThemeToggle } from './theme-toggle';
+import { NotificationBell } from './notification-bell';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
 import { ScopeMembers } from './scope-members';
 type ScopeKind = 'workspaces' | 'projects';
@@ -164,7 +165,10 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
           <ArrowLeft size={16} />
           {parent.data?.name ?? 'Back to team'}
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <ThemeToggle />
+        </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10">
         <div className="flex flex-wrap items-start justify-between gap-4">

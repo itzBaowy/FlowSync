@@ -7,6 +7,7 @@ test('two users receive board and task updates, recover on reconnect and lose re
   page,
   browser,
 }) => {
+  test.setTimeout(60000);
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
   });
@@ -87,7 +88,22 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await expect(
       memberCanvas.getByRole('button', { name: 'Live delivery', exact: true }),
     ).toBeVisible();
-    await memberCanvas.getByRole('button', { name: 'Live delivery', exact: true }).click();
+    await expect(
+      memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }),
+    ).toBeVisible();
+    await memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }).click();
+    const inbox = memberPage.getByRole('dialog', { name: 'Notifications', exact: true });
+    await expect(inbox).toContainText('assigned you to "Live delivery"');
+    await inbox.getByRole('button', { name: 'Mark read', exact: true }).click();
+    await expect(
+      memberPage.getByRole('button', { name: 'Notifications (0 unread)', exact: true }),
+    ).toBeVisible();
+    await inbox.getByRole('button', { name: 'Mark unread', exact: true }).click();
+    await expect(
+      memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }),
+    ).toBeVisible();
+    await inbox.getByRole('link', { name: 'Open task', exact: true }).click();
+    await expect(memberPage).toHaveURL(/taskId=/);
     const memberPanel = memberPage.getByRole('dialog', { name: 'Task details', exact: true });
     await expect(memberPanel.getByLabel('Task title', { exact: true })).toBeEnabled();
     await ownerPanel.getByLabel('Task title', { exact: true }).fill('Live delivery updated');
@@ -118,6 +134,37 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await expect(
       memberCanvas.getByRole('button', { name: 'Changed while offline', exact: true }),
     ).toBeVisible();
+    await memberPage.getByRole('button', { name: /Notifications \(/ }).click();
+    await inbox.getByRole('button', { name: 'Mark all read', exact: true }).click();
+    await expect(
+      memberPage.getByRole('button', { name: 'Notifications (0 unread)', exact: true }),
+    ).toBeVisible();
+    await memberPage.goto('/dashboard');
+    const refreshedTask = page.waitForResponse(
+      (response) =>
+        /\/api\/tasks\/[0-9a-f-]+$/.test(response.url()) && response.request().method() === 'GET',
+    );
+    await page.getByRole('button', { name: 'Changed while offline', exact: true }).click();
+    await refreshedTask;
+    await expect(ownerPanel.getByLabel('Task title', { exact: true })).toHaveValue(
+      'Changed while offline',
+    );
+    await ownerPanel.getByLabel('Task title', { exact: true }).fill('Dashboard delivery');
+    await ownerPanel.getByRole('button', { name: 'Save task', exact: true }).click();
+    await expect(ownerPanel.getByLabel('Task title', { exact: true })).toHaveValue(
+      'Dashboard delivery',
+    );
+    await expect(
+      memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }),
+    ).toBeVisible();
+    await memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }).click();
+    await expect(inbox).toContainText('updated "Dashboard delivery"');
+    await inbox.getByRole('link', { name: 'Open task', exact: true }).first().click();
+    await expect(memberPanel.getByLabel('Task title', { exact: true })).toHaveValue(
+      'Dashboard delivery',
+    );
+    await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await expect(memberPage).not.toHaveURL(/taskId=/);
     await page.goto(`/projects?workspaceId=${workspace.id}&id=${project.id}`);
     await page
       .getByRole('article', { name: `Space member ${member.email}`, exact: true })

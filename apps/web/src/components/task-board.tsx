@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { taskPrioritySchema, taskSchema, type BoardSnapshot } from '@flowsync/contracts';
 import { paged } from '@/lib/organizations';
@@ -12,9 +14,21 @@ import { TaskPanel } from './task-panel';
 import { KanbanCanvas } from './kanban-canvas';
 import { useBoardRealtime } from '@/lib/use-board-realtime';
 export function TaskBoard({ board }: { board: BoardSnapshot }) {
+  const router = useRouter();
+  const params = useSearchParams();
+  const taskId = params.get('taskId');
   const { status: realtime, presence } = useBoardRealtime(board.id);
   const [creating, setCreating] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
+  const selected = z.string().uuid().safeParse(taskId).success ? taskId : opened;
+  const setSelected = (id: string | null) => {
+    setOpened(id);
+    if (taskId) {
+      const next = new URLSearchParams(params);
+      next.delete('taskId');
+      router.replace(`/boards?${next}`, { scroll: false });
+    }
+  };
   const [search, setSearch] = useState('');
   const [priority, setPriority] = useState('');
   const [columnId, setColumnId] = useState('');
