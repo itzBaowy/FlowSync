@@ -144,13 +144,13 @@ export function Dashboard() {
             WORKSPACES
           </h2>
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-            Create an organization to bring your team together. Shared workspaces are coming next.
+            Open an organization to browse your workspaces and projects.
           </p>
         </div>
         <div className="mt-auto rounded-lg border border-border bg-card p-3">
           <p className="text-xs font-medium">Built for what’s next</p>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            Shared workspaces are coming soon.
+            Kanban boards are coming next.
           </p>
         </div>
         <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
@@ -220,8 +220,8 @@ export function Dashboard() {
               {
                 icon: Layers3,
                 label: 'Team workspace',
-                value: 'Up next',
-                detail: 'A home for your team, coming soon',
+                value: 'Ready',
+                detail: 'Organize your team into focused spaces',
               },
               {
                 icon: Activity,
@@ -244,8 +244,8 @@ export function Dashboard() {
           </section>
           <section className="mt-8 rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-sm font-semibold">Your projects</h2>
-              <span className="text-xs text-muted-foreground">A clean slate</span>
+              <h2 className="text-sm font-semibold">Your teams and projects</h2>
+              <span className="text-xs text-muted-foreground">Choose a space</span>
             </div>
             <div className="flex flex-col items-center px-6 py-14 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/50">
@@ -253,8 +253,8 @@ export function Dashboard() {
               </div>
               <h3 className="mt-5 font-semibold">Good things start with a little space</h3>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                Your account is ready. Create an organization and invite your team. Project creation
-                will arrive in the next milestones.
+                Choose an organization to open its workspaces and projects, or create a new home for
+                your team.
               </p>
               <Link
                 href="/organizations"
@@ -286,8 +286,14 @@ export function Dashboard() {
                 },
                 {
                   number: '03',
+                  title: 'Plan work together',
+                  text: 'Workspaces, projects, member access, and clear project overviews.',
+                  done: true,
+                },
+                {
+                  number: '04',
                   title: 'Find your team’s flow',
-                  text: 'Projects, Kanban boards, and realtime collaboration.',
+                  text: 'Kanban boards, tasks, and realtime collaboration.',
                   done: false,
                 },
               ].map((step) => (
