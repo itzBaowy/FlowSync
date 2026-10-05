@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+@custom-variant dark (&:is(.dark *));
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-sidebar: var(--sidebar);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --font-sans: 'Segoe UI', Arial, Helvetica, sans-serif;
+}
+:root {
+  --background: #fafbfc;
+  --foreground: #202432;
+  --card: #fff;
+  --sidebar: #f6f7f9;
+  --border: #e5e7ed;
+  --primary: #6155d9;
+  --primary-foreground: #fff;
+  --muted: #eff0f5;
+  --muted-foreground: #767c8d;
+  --destructive: #c93545;
+}
+.dark {
+  --background: #14161e;
+  --foreground: #eceef6;
+  --card: #1c1f29;
+  --sidebar: #181a23;
+  --border: #2d303e;
+  --primary: #a59aff;
+  --primary-foreground: #18132e;
+  --muted: #272b38;
+  --muted-foreground: #9a9fb0;
+  --destructive: #fb7e8c;
+}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+::selection {
+  background: #6155d930;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
