@@ -41,3 +41,4 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type PublicUser = z.infer<typeof userSchema>;
 export type AuthSession = z.infer<typeof authSessionSchema>;
 export * from './organizations';
+export * from './projects';
