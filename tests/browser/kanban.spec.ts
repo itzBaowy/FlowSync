@@ -66,6 +66,51 @@ test('board creation and scoped column management', async ({ page }) => {
       .toEqual(['Blocked 0', 'Done 0']);
     await page.reload();
     await expect(canvas.getByRole('heading', { name: 'Blocked 0' })).toBeVisible();
+    await page.getByText('Project labels', { exact: true }).click();
+    await page.getByLabel('New label name').fill('Bug');
+    await page.getByLabel('New label color').fill('#dc2626');
+    await page.getByRole('button', { name: 'Add label', exact: true }).click();
+    await page.getByRole('button', { name: 'New task', exact: true }).click();
+    await page.getByLabel('Task title', { exact: true }).fill('Fix launch checklist');
+    await page.getByLabel('Task description').fill('Review the rollout plan.');
+    await page.getByLabel('Task priority', { exact: true }).selectOption('HIGH');
+    await page.getByLabel('Task due date').fill('2026-10-20');
+    await page.getByRole('checkbox', { name: /Board Owner/ }).check();
+    await page.getByRole('checkbox', { name: 'Bug', exact: true }).check();
+    await page.getByRole('button', { name: 'Create task now' }).click();
+    const panel = page.getByRole('dialog', { name: 'Task details', exact: true });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByLabel('Task title', { exact: true })).toHaveValue(
+      'Fix launch checklist',
+    );
+    await panel.getByLabel('New checklist title').fill('Release checks');
+    await panel.getByRole('button', { name: 'Add checklist', exact: true }).click();
+    await panel.getByLabel('New item in Release checks').fill('Review API');
+    await panel.getByRole('button', { name: 'Add item', exact: true }).click();
+    await panel.getByRole('checkbox', { name: 'Review API', exact: true }).check();
+    await expect(panel.getByText('1 / 1 completed')).toBeVisible();
+    await panel.getByLabel('Move to column').selectOption({ label: 'In progress' });
+    await panel.getByRole('button', { name: 'Move task to end' }).click();
+    await expect(panel.getByText(/IN_PROGRESS \/ Version/)).toBeVisible();
+    await panel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await expect(canvas.getByRole('heading', { name: 'In progress 1' })).toBeVisible();
+    await page.reload();
+    await canvas.getByRole('button', { name: /Fix launch checklist/ }).click();
+    await expect(panel.getByRole('checkbox', { name: 'Review API', exact: true })).toBeChecked();
+    await expect(panel.getByLabel('Task due date')).toHaveValue('2026-10-20');
+    await panel.getByRole('button', { name: 'Archive task', exact: true }).click();
+    await expect(panel.getByRole('button', { name: 'Restore task', exact: true })).toBeVisible();
+    await panel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await expect(canvas.getByRole('heading', { name: 'In progress 0' })).toBeVisible();
+    await page.getByRole('checkbox', { name: 'Archived tasks', exact: true }).check();
+    await page
+      .getByLabel('Task results', { exact: true })
+      .getByRole('button', { name: /Fix launch checklist/ })
+      .click();
+    await panel.getByRole('button', { name: 'Restore task', exact: true }).click();
+    await panel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to board', exact: true }).click();
+    await expect(canvas.getByRole('heading', { name: 'In progress 1' })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))

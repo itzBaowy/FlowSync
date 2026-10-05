@@ -19,6 +19,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
 import { ThemeToggle } from './theme-toggle';
+import { TaskBoard } from './task-board';
+import { LabelSettings } from './label-settings';
 export function BoardHub() {
   const router = useRouter();
   const params = useSearchParams();
@@ -181,40 +183,8 @@ export function BoardHub() {
                   {detail.data.canManage && (
                     <BoardSettings board={detail.data} onDeleted={() => router.replace(basePath)} />
                   )}
-                  <div
-                    className="flex min-w-0 gap-4 overflow-x-auto pb-5"
-                    aria-label="Kanban columns"
-                  >
-                    {detail.data.columns.map((column) => (
-                      <section
-                        key={column.id}
-                        aria-label={column.name}
-                        className="w-72 shrink-0 space-y-3 rounded-xl border border-border bg-muted/30 p-3"
-                      >
-                        <h3 className="font-semibold">
-                          {column.name}{' '}
-                          <span className="text-xs text-muted-foreground">{column.totalTasks}</span>
-                        </h3>
-                        {column.tasks.map((task) => (
-                          <article
-                            key={task.id}
-                            className="rounded-lg border border-border bg-card p-3 shadow-sm"
-                          >
-                            <p className="break-words text-sm font-medium">{task.title}</p>
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              {task.priority}
-                              {task.dueDate ? ` / Due ${task.dueDate.slice(0, 10)}` : ''}
-                            </p>
-                          </article>
-                        ))}
-                        {column.tasks.length === 0 && (
-                          <p className="py-8 text-center text-xs text-muted-foreground">
-                            No tasks yet
-                          </p>
-                        )}
-                      </section>
-                    ))}
-                  </div>
+                  {detail.data.canManage && <LabelSettings projectId={detail.data.projectId} />}
+                  <TaskBoard key={detail.data.id} board={detail.data} />
                 </>
               ) : (
                 !selected && (
