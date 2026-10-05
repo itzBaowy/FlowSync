@@ -3,12 +3,14 @@ import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 import { PermissionService } from '../authorization/permission.service';
 import { TasksService } from './tasks.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 @Injectable()
 export class TaskExtrasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly tasks: TasksService,
+    private readonly events: RealtimeEventsService,
   ) {}
   async labels(userId: string, projectId: string) {
     await this.permissions.requireProject(userId, projectId, 'read');
@@ -23,13 +25,15 @@ export class TaskExtrasService {
     run: (tx: Prisma.TransactionClient) => Promise<T>,
   ) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         await this.permissions.lockProject(tx, projectId);
         await this.permissions.requireProject(userId, projectId, 'manage', tx);
         const result = await run(tx);
         await tx.board.updateMany({ where: { projectId }, data: { revision: { increment: 1 } } });
         return result;
       });
+      await this.events.boardsChanged({ projectId });
+      return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
         throw new ConflictException('A label with this name already exists in this project');

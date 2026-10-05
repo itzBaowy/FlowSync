@@ -14,11 +14,12 @@ const prisma = new PrismaClient({
 const users: { id: string; token: string }[] = [];
 const connections: Socket[] = [];
 let api: Awaited<ReturnType<typeof startTestApi>>;
+let replica: Awaited<ReturnType<typeof startTestApi>> | undefined;
 let organizationId: string;
 let boardId: string;
 let projectId: string;
-async function connect(token: string, origin = process.env.WEB_URL) {
-  const socket = io(`${api.baseUrl.replace(/\/api$/, '')}/realtime`, {
+async function connect(token: string, origin = process.env.WEB_URL, target = api) {
+  const socket = io(`${target.baseUrl.replace(/\/api$/, '')}/realtime`, {
     transports: ['websocket'],
     auth: { token },
     extraHeaders: { Origin: origin! },
@@ -88,6 +89,7 @@ beforeAll(async () => {
 afterAll(async () => {
   connections.forEach((socket) => socket.disconnect());
   api?.stop();
+  replica?.stop();
   if (organizationId) {
     const projects = { workspace: { organizationId } };
     await prisma.task.deleteMany({ where: { column: { board: { project: projects } } } });
@@ -151,5 +153,73 @@ describe.sequential('Authenticated board subscriptions', () => {
     const socket = await connect(short);
     await new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
     expect(socket.connected).toBe(false);
+  });
+});
+function nextEvent(socket: Socket, name: string) {
+  return new Promise<Record<string, unknown>>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`Missing event ${name}`)), 3000);
+    socket.once(name, (event) => {
+      clearTimeout(timeout);
+      resolve(event);
+    });
+  });
+}
+describe.sequential('Committed board changes across API replicas', () => {
+  it('fans out through Redis after commit and emits nothing for rolled back mutations', async () => {
+    replica = await startTestApi();
+    const local = await connect(users[0]!.token);
+    const remote = await connect(users[1]!.token, process.env.WEB_URL, replica);
+    await join(local, boardId);
+    await join(remote, boardId);
+    const column = await prisma.column.findFirstOrThrow({ where: { boardId } });
+    const localEvent = nextEvent(local, 'board:changed');
+    const remoteEvent = nextEvent(remote, 'board:changed');
+    const response = await fetch(`${api.baseUrl}/tasks`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${users[0]!.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ columnId: column.id, title: 'Committed task' }),
+    });
+    expect(response.status).toBe(201);
+    const event = await remoteEvent;
+    expect(await localEvent).toEqual(event);
+    expect(event).toEqual({ boardId, revision: 1 });
+    expect(await prisma.task.count({ where: { columnId: column.id } })).toBe(1);
+    const received: unknown[] = [];
+    remote.on('board:changed', (event) => received.push(event));
+    const rejected = await fetch(`${api.baseUrl}/tasks`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${users[0]!.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        columnId: column.id,
+        title: 'Invalid task',
+        assigneeIds: [users[2]!.id],
+      }),
+    });
+    expect(rejected.status).toBe(400);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(received).toHaveLength(0);
+    expect((await prisma.board.findUniqueOrThrow({ where: { id: boardId } })).revision).toBe(1);
+    // An already-connected member loses access before the next event is delivered.
+    await prisma.projectMember.delete({
+      where: { projectId_userId: { projectId, userId: users[1]!.id } },
+    });
+    const revoked = nextEvent(remote, 'board:revoked');
+    const changed = nextEvent(local, 'board:changed');
+    expect(
+      (
+        await fetch(`${api.baseUrl}/boards/${boardId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${users[0]!.token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: 'Changed board' }),
+        })
+      ).status,
+    ).toBe(200);
+    expect(await revoked).toEqual({ boardId });
+    expect((await changed).revision).toBe(2);
+    expect(received).toHaveLength(0);
+    await prisma.projectMember.create({ data: { projectId, userId: users[1]!.id } });
   });
 });

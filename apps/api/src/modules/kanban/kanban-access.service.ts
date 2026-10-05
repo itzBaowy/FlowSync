@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../../database/prisma.service';
 import type { Prisma } from '../../generated/prisma/client';
 import { PermissionService, type OrganizationDb } from '../authorization/permission.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 export type BoardActor = Awaited<ReturnType<KanbanAccessService['board']>>;
 @Injectable()
@@ -9,6 +10,7 @@ export class KanbanAccessService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly events: RealtimeEventsService,
   ) {}
   async board(
     userId: string,
@@ -44,7 +46,7 @@ export class KanbanAccessService {
   ) {
     // Check visibility before taking locks, then repeat authorization under the tenant lock.
     const initial = await this.board(userId, id, permission);
-    return this.prisma.$transaction(
+    const committed = await this.prisma.$transaction(
       async (tx) => {
         await this.permissions.lockProject(tx, initial.board.projectId);
         await tx.$queryRaw`SELECT id FROM "Board" WHERE id = ${id}::uuid FOR UPDATE`;
@@ -61,9 +63,18 @@ export class KanbanAccessService {
             data: { revision: { increment: 1 } },
           });
         }
-        return run(tx, actor);
+        return {
+          result: await run(tx, actor),
+          revision: actor.board.revision + (options.bump === false ? 1 : 0),
+        };
       },
       { timeout: 15000 },
     );
+    await this.events.boardChanged({
+      boardId: id,
+      revision: committed.revision,
+      ...(options.bump === false ? { deleted: true } : {}),
+    });
+    return committed.result;
   }
 }

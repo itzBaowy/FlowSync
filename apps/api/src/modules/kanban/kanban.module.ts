@@ -8,8 +8,9 @@ import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { TaskExtrasController } from './task-extras.controller';
 import { TaskExtrasService } from './task-extras.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 @Module({
-  imports: [AuthModule, AuthorizationModule],
+  imports: [AuthModule, AuthorizationModule, RealtimeModule],
   controllers: [BoardsController, TasksController, TaskExtrasController],
   providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService],
 })
