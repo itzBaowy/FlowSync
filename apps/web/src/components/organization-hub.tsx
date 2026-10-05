@@ -12,6 +12,8 @@ import { Input } from './ui/input';
 import { ThemeToggle } from './theme-toggle';
 import { Field, Notice, Pager, selectClass } from './organization-ui';
 import { OrganizationSettings } from './organization-settings';
+import { OrganizationMembers } from './organization-members';
+import { OrganizationInvitations } from './organization-invitations';
 
 export function OrganizationHub() {
   const router = useRouter();
@@ -221,11 +223,24 @@ export function OrganizationHub() {
             {selected && organization.isPending && <p>Loading organization…</p>}
             <Notice error={organization.error} />
             {organization.data && (
-              <OrganizationSettings
-                key={organization.data.id}
-                organization={organization.data}
-                onDeleted={() => router.replace('/organizations')}
-              />
+              <>
+                <OrganizationSettings
+                  key={organization.data.id}
+                  organization={organization.data}
+                  onDeleted={() => router.replace('/organizations')}
+                />
+                <OrganizationMembers
+                  key={`members-${organization.data.id}`}
+                  organization={organization.data}
+                />
+                {(organization.data.role === 'OWNER' ||
+                  (organization.data.role === 'ADMIN' && organization.data.allowAdminInvites)) && (
+                  <OrganizationInvitations
+                    key={`invitations-${organization.data.id}`}
+                    organization={organization.data}
+                  />
+                )}
+              </>
             )}
           </section>
         </div>
