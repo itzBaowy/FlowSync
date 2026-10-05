@@ -1,6 +1,6 @@
-# Phase 4 verification — 06/10/2026
+# Phase 5 verification — 06/10/2026
 
-Đã hoàn thành Phase 1–4 theo Requirements.md, gồm organization/logo/invitations và private workspace/project CRUD, members, project owner transfer, status/date validation và overview. Chưa hoàn thành toàn bộ MVP ở mục 34; Realtime/collaboration ở các phase sau.
+Đã hoàn thành Phase 1–5 theo Requirements.md. Realtime, Redis presence và transactional notifications đã được kiểm tra. Phase 6 collaboration đang triển khai; chưa hoàn thành toàn bộ MVP ở mục 34.
 
 | Check                       | Kết quả                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -10,8 +10,8 @@
 | ESLint / Prettier           | Pass                                                                                              |
 | Production build            | Pass cho Next.js và NestJS                                                                        |
 | Unit/security tests         | 16 pass: auth, RBAC, scope policy, PATCH omission, encryption and Kanban contracts                |
-| HTTP integration tests      | 44 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
-| Browser tests               | 8 pass on local builds and Linux Docker containers                                                |
+| HTTP integration tests      | 52 verified on real PostgreSQL/Redis/MinIO/Mailpit (51-case suite + added Redis recovery case)    |
+| Browser tests               | 9 verified on local builds and Linux Docker containers                                            |
 | Docker targets              | API, web, migrator, worker và source-built MinIO build thành công                                 |
 | Compose runtime             | API/PostgreSQL/Redis/MinIO/Mailpit healthy; web/worker chạy; init exit 0                          |
 
@@ -28,3 +28,5 @@ Repository đã kết nối [GitHub FlowSync](https://github.com/itzBaowy/FlowSy
 Phase 3 verifies workspace/project CRUD, private memberships, persisted date invariants, ownership concurrency, public profiles, descendant cleanup, structural delete protection and actual overview data. Browser tests cover CRUD/mobile and two-account membership/owner transfer/access revocation. Delivery outboxes are isolated by NODE_ENV.
 
 Phase 4 adds scoped board/column/task CRUD, multiple assignees, project labels, checklist versions, archive/restore and transactional fractional ranking. Browser verification covers pointer and keyboard moves, empty columns, persistent ordering, optimistic state before a held response, 409 rollback and mobile layout. API tests include concurrent moves/edits/reorders and private scope boundaries. Docker API/web/migrator/worker and the browser suite are verified at this milestone.
+
+Phase 5 verifies authenticated Socket.IO, Redis fanout between API replicas, post-commit board events, immediate membership revocation, token expiry, distributed presence leases/caps, persisted recipient-scoped notifications and web reconnect/inbox/deep-link flows. See [Phase 5](phase5.md) for delivery limits and exact verification scope.

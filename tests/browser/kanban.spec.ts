@@ -168,6 +168,10 @@ test('board management, task details, drag and drop, keyboard sorting and rollba
       });
     });
     async function dragToBlocked() {
+      await expect(handle).toBeEnabled();
+      await page.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+      );
       const source = await handle.boundingBox();
       const target = await canvas
         .getByRole('region', { name: 'Blocked', exact: true })
@@ -225,6 +229,7 @@ test('board management, task details, drag and drop, keyboard sorting and rollba
   } finally {
     if (organizationId) {
       const projects = { workspace: { organizationId } };
+      await prisma.activity.deleteMany({ where: { organizationId } });
       await prisma.task.deleteMany({ where: { column: { board: { project: projects } } } });
       await prisma.column.deleteMany({ where: { board: { project: projects } } });
       await prisma.board.deleteMany({ where: { project: projects } });
