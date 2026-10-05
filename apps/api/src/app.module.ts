@@ -14,6 +14,7 @@ import { HttpErrorFilter } from './common/http';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { KanbanModule } from './modules/kanban/kanban.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
     OrganizationsModule,
     WorkspacesModule,
     ProjectsModule,
+    KanbanModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },
