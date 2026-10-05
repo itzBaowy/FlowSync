@@ -58,7 +58,7 @@ Chỉ tạo module khi có hành vi thực tế; không tạo hàng loạt modul
 
 ## C. Database design
 
-Schema Prisma được chuẩn bị cho toàn domain. Phase 2 expose auth/health và organization/members/invitations/logo. Workspace/project/task chưa có endpoint.
+Schema Prisma được chuẩn bị cho toàn domain. Phase 3 expose auth/health, organization/members/invitations/logo và workspace/project/members/overview. Board/task/realtime chưa có endpoint.
 
 | Entity                            | Relationship / constraint chính                                                                       |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -96,7 +96,7 @@ Các invariant xuyên tenant (assignee thuộc project, column cùng board, labe
 
 ## E. RBAC design
 
-Authentication guard xác định user. Phase 2 dùng permission service + decorator/guard, resolve organization membership từ DB và kiểm tra lại dưới row lock cho mutations. Thiếu resource/membership trả 404. OWNER quản lý settings/role/ownership/delete; ADMIN chỉ invite MEMBER nếu organization cho phép; MEMBER đọc organization và member profiles. Workspace/project permissions sẽ được triển khai ở Phase 3.
+Authentication guard xác định user. Permission service + decorator/guard resolve membership từ DB và kiểm tra lại dưới row lock cho mutations. Thiếu resource/membership trả 404, kể cả project trong parent private. OWNER quản lý organization settings/role/ownership/delete; ADMIN chỉ invite MEMBER nếu được phép. OWNER/ADMIN quản lý workspace/project của tenant; MEMBER cần membership workspace + project. Project owner có thêm quyền quản lý project khi vẫn đủ parent membership. Lock order cố định organization → workspace → project; parent không được đổi qua PATCH.
 
 Organization membership không tự động cho MEMBER truy cập mọi private workspace/project. Admin/owner bypass scope phải được policy cho phép rõ ràng. Dùng reusable permission service + decorators/guard, rồi kiểm tra resource trong use-case; frontend ẩn nút chỉ hỗ trợ UX. Socket join và worker actions phải dùng cùng policy. Role không nhúng vào JWT vì membership có thể thay đổi ngay.
 
@@ -116,7 +116,7 @@ Phase 2 có worker thật cho invitation email. Token acceptance chỉ lưu SHA-
 
 ## H. MVP roadmap
 
-Chi tiết và acceptance criteria ở [roadmap.md](roadmap.md). Phase 1 và Phase 2 đã có hành vi thật, kiểm thử và commits theo module. Tiếp theo Workspace/Project → Kanban → Realtime → Collaboration. AI chỉ sau toàn bộ luồng MVP ở mục 34.
+Chi tiết và acceptance criteria ở [roadmap.md](roadmap.md). Phase 1–3 đã có hành vi thật, kiểm thử và commits theo module. Tiếp theo Kanban → Realtime → Collaboration. AI chỉ sau toàn bộ luồng MVP ở mục 34.
 
 ## I. Risks và mitigation
 

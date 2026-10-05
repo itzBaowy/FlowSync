@@ -1,5 +1,7 @@
 # Phase 3 — Workspace and project management
 
+Đã triển khai API và UI `/workspaces`, `/projects` với CRUD, scope members, project ownership và overview. Unit contracts/policy, 9 HTTP workspace/project cases và 2 browser flows (CRUD/mobile + 2-account membership/transfer/revocation) đã chạy thành công.
+
 Triển khai theo lát: shared contracts + scope policy → workspace CRUD/membership → project CRUD/membership/overview → web → verification. Mỗi lát có tests, commit và push `main` riêng.
 
 OWNER/ADMIN organization được quản lý mọi workspace/project trong organization. MEMBER chỉ đọc workspace đã được thêm vào và project đã được thêm vào trong workspace đó; membership organization không tự mở private scope. Project owner có thể quản lý project nếu vẫn có cả organization/workspace/project membership. Roles luôn đọc từ DB.
