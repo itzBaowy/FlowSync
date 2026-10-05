@@ -12,6 +12,7 @@ import { OriginGuard } from './common/origin.guard';
 import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { HttpErrorFilter } from './common/http';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
     AuthModule,
     HealthModule,
     OrganizationsModule,
+    WorkspacesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },
