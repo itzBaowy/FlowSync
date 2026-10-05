@@ -2,7 +2,7 @@
 
 A team collaboration platform bringing projects, Kanban boards, conversations, and a future AI assistant into one calm workspace. Built as a fullstack engineering portfolio with explicit tenant boundaries and production deployment in mind.
 
-**Current delivery: Phase 3 ? Project management.** Secure accounts/sessions, organizations/logos, invitations and roles, private workspaces/projects, scoped membership, ownership transfer and real project overviews. Kanban/tasks/realtime follow in later phases. AI intentionally follows the MVP.
+**Current delivery: Phase 3 — Project management.** Secure accounts/sessions, organizations/logos, invitations and roles, private workspaces/projects, scoped membership, ownership transfer and real project overviews. Kanban/tasks/realtime follow in later phases. AI intentionally follows the MVP.
 
 ## Features shipped
 
@@ -181,6 +181,6 @@ Modular monolith keeps tenant authorization and transactions understandable. Org
 
 ## Production deployment and future improvements
 
-[Deployment notes](docs/deployment.md) describe TLS/cookie settings, migration sequencing, SMTP/storage credentials, backups and rollout checks. CI is included; cloud deployment is not provisioned. Next steps: Workspace/Project → Kanban → Realtime → Collaboration → Queue hardening → AI. Follow [roadmap.md](docs/roadmap.md).
+[Deployment notes](docs/deployment.md) describe TLS/cookie settings, migration sequencing, SMTP/storage credentials, backups and rollout checks. CI is included; cloud deployment is not provisioned. Next steps: Kanban → Realtime → Collaboration → Queue hardening → AI. Follow [roadmap.md](docs/roadmap.md).
 
 Use small Conventional Commits, e.g. `feat(members): add atomic ownership transfer`. Changes are committed in functional slices and pushed to `main` after each commit. Setup only configures the environment.
