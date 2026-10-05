@@ -229,6 +229,11 @@ export function OrganizationHub() {
                   organization={organization.data}
                   onDeleted={() => router.replace('/organizations')}
                 />
+                <Button asChild variant="outline">
+                  <Link href={`/workspaces?organizationId=${organization.data.id}`}>
+                    Open workspaces
+                  </Link>
+                </Button>
                 <OrganizationMembers
                   key={`members-${organization.data.id}`}
                   organization={organization.data}
