@@ -11,10 +11,8 @@ import {
 } from '@flowsync/contracts';
 import { ApiError, getAccessToken, refreshSession } from './api';
 import { kanbanKeys } from './kanban';
+import { realtimeUrl } from './use-notification-realtime';
 type Status = 'connecting' | 'live' | 'offline' | 'revoked';
-const url =
-  process.env.NEXT_PUBLIC_REALTIME_URL ??
-  `${new URL(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api').origin}/realtime`;
 export function useBoardRealtime(boardId: string) {
   const client = useQueryClient();
   const [status, setStatus] = useState<Status>('connecting');
@@ -23,7 +21,10 @@ export function useBoardRealtime(boardId: string) {
     let stopped = false;
     let renewing = false;
     let connectedToken: string | null = null;
-    const socket = io(url, {
+    let joined = false;
+    let joining = false;
+    let revoked = false;
+    const socket = io(realtimeUrl, {
       transports: ['websocket'],
       autoConnect: false,
       auth: (callback) => {
@@ -35,7 +36,9 @@ export function useBoardRealtime(boardId: string) {
     });
     const refresh = () =>
       Promise.all(
-        [...kanbanKeys, 'project'].map((key) => client.invalidateQueries({ queryKey: [key] })),
+        [...kanbanKeys, 'project', 'notifications'].map((key) =>
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
       );
     async function renew() {
       if (stopped || renewing) return;
@@ -53,26 +56,36 @@ export function useBoardRealtime(boardId: string) {
         renewing = false;
       }
     }
-    socket.on('connect', async () => {
+    async function subscribe() {
+      if (stopped || revoked || joining || !socket.connected) return;
+      joining = true;
       try {
         const reply = boardJoinedSchema.parse(
           await socket.timeout(5000).emitWithAck('board:join', { boardId }),
         );
         if (stopped) return;
         if (reply.ok) {
+          joined = true;
           setStatus('live');
           await refresh();
         } else if (reply.code === 'NOT_FOUND') {
+          revoked = true;
           setStatus('revoked');
           socket.disconnect();
           await refresh();
         } else setStatus('offline');
       } catch {
         if (!stopped) setStatus('offline');
+      } finally {
+        joining = false;
       }
+    }
+    socket.on('connect', () => {
+      void subscribe();
     });
     socket.on('disconnect', (reason) => {
       if (stopped) return;
+      joined = false;
       setStatus((current) => (current === 'revoked' ? current : 'offline'));
       if (reason === 'io server disconnect') void renew();
     });
@@ -90,6 +103,7 @@ export function useBoardRealtime(boardId: string) {
       if (typeof event !== 'object' || !event || !('boardId' in event) || event.boardId !== boardId)
         return;
       setStatus('revoked');
+      revoked = true;
       socket.disconnect();
       void refresh();
     });
@@ -105,7 +119,10 @@ export function useBoardRealtime(boardId: string) {
       if (snapshot.success && snapshot.data.boardId === boardId) setPresence(snapshot.data);
     });
     const recover = () => {
-      if (!stopped) void refresh();
+      if (!stopped && !revoked) {
+        if (socket.connected && !joined) void subscribe();
+        void refresh();
+      }
     };
     const onVisible = () => {
       if (document.visibilityState === 'visible') recover();
@@ -115,6 +132,7 @@ export function useBoardRealtime(boardId: string) {
       setStatus('offline');
     };
     const onOnline = () => {
+      if (revoked) return;
       socket.connect();
       recover();
     };

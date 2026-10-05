@@ -38,7 +38,8 @@ export class PresenceService {
       transaction
         .zadd(`${this.prefix}:board:${id}`, Date.now() + LEASE, `${userId}:${socketId}`)
         .expire(`${this.prefix}:board:${id}`, 60);
-    await transaction.exec();
+    const results = await transaction.exec();
+    if (!results || results.some(([error]) => error)) throw new Error('Presence lease unavailable');
   }
   async leave(userId: string, socketId: string, boardId: string) {
     await this.redis.client.zrem(`${this.prefix}:board:${boardId}`, `${userId}:${socketId}`);
@@ -49,7 +50,9 @@ export class PresenceService {
       .zrem(`${this.prefix}:connections:${userId}`, socketId);
     for (const id of boardIds)
       transaction.zrem(`${this.prefix}:board:${id}`, `${userId}:${socketId}`);
-    await transaction.exec();
+    const results = await transaction.exec();
+    if (!results || results.some(([error]) => error))
+      throw new Error('Presence cleanup unavailable');
   }
   async snapshot(boardId: string) {
     const key = `${this.prefix}:board:${boardId}`;

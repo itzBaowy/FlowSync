@@ -217,6 +217,10 @@ export class RealtimeGateway
       ack({ ok: true, boardId: board.id, revision: board.revision });
       void this.publishPresence(board.id);
     } catch (error) {
+      // A failed presence write must not leave a partial room subscription behind.
+      socket.data.boardIds = socket.data.boardIds.filter((id) => id !== parsed.data.boardId);
+      await socket.leave(`board:${parsed.data.boardId}`);
+      await this.presence.leave(socket.data.userId, socket.id, parsed.data.boardId).catch(() => {});
       ack({
         ok: false,
         code: error instanceof NotFoundException ? 'NOT_FOUND' : 'UNAVAILABLE',

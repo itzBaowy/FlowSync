@@ -305,6 +305,21 @@ describe.sequential('Distributed online presence and connection leases', () => {
     await expect.poll(() => presenceSchema.parse(latest).totalOnline).toBe(1);
     await redis.zrem(key, `${users[2]!.id}:foreign`);
   });
+  it('cleans a failed Redis subscription and allows a later retry', async () => {
+    const board = await prisma.board.create({ data: { projectId, name: 'Recover subscription' } });
+    const key = `flowsync:test:presence:board:${board.id}`;
+    const socket = await connect(users[0]!.token);
+    try {
+      await redis.set(key, 'fault-injected-wrong-type');
+      expect(await join(socket, board.id)).toMatchObject({ ok: false, code: 'UNAVAILABLE' });
+      await redis.del(key);
+      expect(await join(socket, board.id)).toMatchObject({ ok: true, boardId: board.id });
+    } finally {
+      socket.disconnect();
+      await redis.del(key);
+      await prisma.board.delete({ where: { id: board.id } });
+    }
+  });
   it('limits active connections per user across replicas', async () => {
     for (let index = 0; index < 10; index++)
       await connect(users[2]!.token, process.env.WEB_URL, index % 2 ? replica! : api);
