@@ -1,6 +1,6 @@
-# Phase 5 verification — 06/10/2026
+# Phase 6 verification — 06/10/2026
 
-Đã hoàn thành Phase 1–5 theo Requirements.md. Realtime, Redis presence và transactional notifications đã được kiểm tra. Phase 6 collaboration đang triển khai; chưa hoàn thành toàn bộ MVP ở mục 34.
+Đã hoàn thành Phase 1–6 theo Requirements.md và luồng MVP ở mục 34. Phase 7 queue hardening tiếp tục; AI và production deployment chưa hoàn thành.
 
 | Check                       | Kết quả                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -9,8 +9,8 @@
 | TypeScript strict typecheck | Pass cho contracts, API, web                                                                      |
 | ESLint / Prettier           | Pass                                                                                              |
 | Production build            | Pass cho Next.js và NestJS                                                                        |
-| Unit/security tests         | 16 pass: auth, RBAC, scope policy, PATCH omission, encryption and Kanban contracts                |
-| HTTP integration tests      | 52 verified on real PostgreSQL/Redis/MinIO/Mailpit (51-case suite + added Redis recovery case)    |
+| Unit/security tests         | 24 pass: auth, RBAC, contracts, mention parsing, encryption and attachment content validation     |
+| HTTP integration tests      | 65 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
 | Browser tests               | 9 verified on local builds and Linux Docker containers                                            |
 | Docker targets              | API, web, migrator, worker và source-built MinIO build thành công                                 |
 | Compose runtime             | API/PostgreSQL/Redis/MinIO/Mailpit healthy; web/worker chạy; init exit 0                          |
@@ -30,3 +30,5 @@ Phase 3 verifies workspace/project CRUD, private memberships, persisted date inv
 Phase 4 adds scoped board/column/task CRUD, multiple assignees, project labels, checklist versions, archive/restore and transactional fractional ranking. Browser verification covers pointer and keyboard moves, empty columns, persistent ordering, optimistic state before a held response, 409 rollback and mobile layout. API tests include concurrent moves/edits/reorders and private scope boundaries. Docker API/web/migrator/worker and the browser suite are verified at this milestone.
 
 Phase 5 verifies authenticated Socket.IO, Redis fanout between API replicas, post-commit board events, immediate membership revocation, token expiry, distributed presence leases/caps, persisted recipient-scoped notifications and web reconnect/inbox/deep-link flows. See [Phase 5](phase5.md) for delivery limits and exact verification scope.
+
+Phase 6 verifies scoped comments/mentions and version conflicts, transactional activity retention/rollback, private attachment upload/download/deletion/compensation, global search privacy, assignment scope and actual dashboard aggregates. The full browser suite passes on local production builds and Linux Docker containers. See [Phase 6](phase6.md).
