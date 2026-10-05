@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import type { Pagination } from '@/lib/organizations';
 
@@ -75,6 +75,8 @@ export function Confirm({
   onConfirm: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
   useEffect(() => {
     if (prompt) ref.current?.showModal();
     else ref.current?.close();
@@ -83,14 +85,14 @@ export function Confirm({
     <dialog
       ref={ref}
       onCancel={onClose}
-      aria-labelledby="confirmation-title"
-      aria-describedby="confirmation-description"
-      className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/50"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border border-border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/50"
     >
-      <h2 id="confirmation-title" className="text-lg font-semibold">
+      <h2 id={titleId} className="text-lg font-semibold">
         {prompt?.title}
       </h2>
-      <p id="confirmation-description" className="mt-3 text-sm text-muted-foreground">
+      <p id={descriptionId} className="mt-3 text-sm text-muted-foreground">
         {prompt?.description}
       </p>
       <div className="mt-6 flex justify-end gap-3">

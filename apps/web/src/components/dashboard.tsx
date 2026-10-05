@@ -281,8 +281,8 @@ export function Dashboard() {
                 {
                   number: '02',
                   title: 'Bring your team together',
-                  text: 'Organizations, invitations, roles, and shared workspaces.',
-                  done: false,
+                  text: 'Organizations, email invitations, roles, and team ownership.',
+                  done: true,
                 },
                 {
                   number: '03',
