@@ -156,11 +156,13 @@ model EmailOutbox {
   id               String @id @default(uuid()) @db.Uuid
   invitationId     String @unique @db.Uuid
   encryptedPayload String?
+  environment      String @default("development") @db.VarChar(16)
   enqueuedAt       DateTime?
   deliveredAt      DateTime?
   createdAt        DateTime @default(now())
   invitation       Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
   @@index([deliveredAt, createdAt])
+  @@index([environment, deliveredAt, createdAt])
 }
 
 model Workspace {

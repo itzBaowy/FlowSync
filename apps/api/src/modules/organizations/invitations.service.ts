@@ -87,7 +87,12 @@ export class InvitationsService {
             tokenHash: hashToken(token),
             invitedById: actorId,
             expiresAt: new Date(Date.now() + 7 * 86400000),
-            delivery: { create: { encryptedPayload: payload } },
+            delivery: {
+              create: {
+                encryptedPayload: payload,
+                environment: this.config.get('NODE_ENV', { infer: true }),
+              },
+            },
           },
         });
         return view(invite);

@@ -7,6 +7,7 @@ import { validateEnvironment } from '../src/config/environment';
 import { startEmailWorker } from '../src/modules/queue/email-worker';
 import { decryptInvitation } from '../src/modules/queue/invitation-payload';
 import { startTestApi } from './helpers/api-server';
+import { Queue } from 'bullmq';
 
 config({ path: '../../.env', quiet: true });
 const prisma = new PrismaClient({
@@ -96,6 +97,40 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 describe.sequential('Invitation lifecycle, RBAC and real SMTP delivery', () => {
+  it('binds delivery to the API environment', async () => {
+    await worker!.stop();
+    worker = undefined;
+    const email = `isolated-${suffix}@example.com`;
+    const created = await (await createInvite(email)).json();
+    const outbox = await prisma.emailOutbox.findUniqueOrThrow({
+      where: { invitationId: created.data.id },
+    });
+    expect(outbox.environment).toBe('test');
+    // Even a manually misrouted job must not deliver a token from another environment.
+    const development = await startEmailWorker({ ...env, NODE_ENV: 'development' });
+    const queue = new Queue('flowsync-email-development', {
+      connection: { host: env.REDIS_HOST, port: env.REDIS_PORT, password: env.REDIS_PASSWORD },
+    });
+    try {
+      const job = await queue.add('invitation', { outboxId: outbox.id }, { jobId: outbox.id });
+      for (let attempt = 0; attempt < 40 && (await job.getState()) !== 'completed'; attempt++)
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(await job.getState()).toBe('completed');
+      expect(
+        (await prisma.emailOutbox.findUniqueOrThrow({ where: { id: outbox.id } })).deliveredAt,
+      ).toBeNull();
+      await job.remove();
+    } finally {
+      await development.stop();
+      await queue.close();
+      await request(
+        `/organizations/${organizationId}/invitations/${created.data.id}/revoke`,
+        0,
+        'POST',
+      );
+      worker = await startEmailWorker(env);
+    }
+  });
   it('enforces owner/admin/member invitation permissions and admin settings', async () => {
     expect((await createInvite(accounts[1]!.email, 'MEMBER', 4)).status).toBe(403);
     expect((await createInvite(accounts[1]!.email, 'ADMIN', 3)).status).toBe(403);

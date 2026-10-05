@@ -53,7 +53,8 @@ export async function startEmailWorker(env: Environment) {
         where: { id: job.data.outboxId },
         include: { invitation: { include: { organization: true } } },
       });
-      if (!entry?.encryptedPayload || entry.deliveredAt) return;
+      if (!entry?.encryptedPayload || entry.deliveredAt || entry.environment !== env.NODE_ENV)
+        return;
       const invite = entry.invitation;
       if (invite.status !== 'PENDING' || invite.expiresAt <= new Date()) return;
       const sender = await prisma.organizationMember.findUnique({
@@ -107,15 +108,24 @@ export async function startEmailWorker(env: Environment) {
     if (pumping || stopping) return;
     pumping = (async () => {
       await prisma.invitation.updateMany({
-        where: { status: 'PENDING', expiresAt: { lte: new Date() } },
+        where: {
+          status: 'PENDING',
+          expiresAt: { lte: new Date() },
+          delivery: { is: { environment: env.NODE_ENV } },
+        },
         data: { status: 'EXPIRED' },
       });
       await prisma.emailOutbox.updateMany({
-        where: { encryptedPayload: { not: null }, invitation: { status: { not: 'PENDING' } } },
+        where: {
+          environment: env.NODE_ENV,
+          encryptedPayload: { not: null },
+          invitation: { status: { not: 'PENDING' } },
+        },
         data: { encryptedPayload: null },
       });
       const entries = await prisma.emailOutbox.findMany({
         where: {
+          environment: env.NODE_ENV,
           deliveredAt: null,
           encryptedPayload: { not: null },
           invitation: { status: 'PENDING', expiresAt: { gt: new Date() } },
