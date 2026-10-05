@@ -17,17 +17,19 @@ import { PaginatedResult } from '../../common/pagination';
 import { PermissionService } from '../authorization/permission.service';
 import { KanbanAccessService } from './kanban-access.service';
 import { boardView, taskInclude, taskView } from './kanban-view';
+import { ActivityService } from '../activity/activity.service';
 @Injectable()
 export class BoardsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly access: KanbanAccessService,
+    private readonly activity: ActivityService,
   ) {}
   create(userId: string, input: BoardInput) {
     return this.prisma.$transaction(async (tx) => {
       await this.permissions.lockProject(tx, input.projectId);
-      await this.permissions.requireProject(userId, input.projectId, 'manage', tx);
+      const actor = await this.permissions.requireProject(userId, input.projectId, 'manage', tx);
       const board = await tx.board.create({
         data: {
           ...input,
@@ -40,6 +42,13 @@ export class BoardsService {
             ],
           },
         },
+      });
+      await this.activity.record(tx, {
+        organizationId: actor.workspace.organizationId,
+        projectId: actor.project.id,
+        actorId: userId,
+        action: 'BOARD_CREATED',
+        metadata: { boardId: board.id, name: board.name },
       });
       return boardView(board, true);
     });

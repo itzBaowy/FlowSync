@@ -10,8 +10,9 @@ import { TaskExtrasController } from './task-extras.controller';
 import { TaskExtrasService } from './task-extras.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ActivityModule } from '../activity/activity.module';
 @Module({
-  imports: [AuthModule, AuthorizationModule, RealtimeModule, NotificationsModule],
+  imports: [AuthModule, AuthorizationModule, RealtimeModule, NotificationsModule, ActivityModule],
   controllers: [BoardsController, TasksController, TaskExtrasController],
   providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService],
 })

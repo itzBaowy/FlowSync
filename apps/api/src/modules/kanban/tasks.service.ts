@@ -12,6 +12,7 @@ import { PaginatedResult } from '../../common/pagination';
 import { KanbanAccessService, type BoardActor } from './kanban-access.service';
 import { taskInclude, taskView, type TaskRow } from './kanban-view';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityService } from '../activity/activity.service';
 const MAX_COLUMN_TASKS = 10000;
 export type TaskActor = { row: TaskRow; board: BoardActor; view: ReturnType<typeof taskView> };
 @Injectable()
@@ -20,6 +21,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly access: KanbanAccessService,
     private readonly notifications: NotificationsService,
+    private readonly activity: ActivityService,
   ) {}
   async locate(userId: string, id: string) {
     const task = await this.prisma.task.findUnique({
@@ -88,7 +90,14 @@ export class TasksService {
         const result = await run(tx, { row, board, view });
         const current = await tx.task.findUnique({
           where: { id },
-          select: { title: true, assignees: { select: { userId: true } } },
+          select: {
+            title: true,
+            columnId: true,
+            archivedAt: true,
+            position: true,
+            column: { select: { kind: true } },
+            assignees: { select: { userId: true } },
+          },
         });
         if (current) {
           const oldIds = row.assignees.map((user) => user.userId);
@@ -117,9 +126,48 @@ export class TasksService {
           ))
             recipients.add(recipient);
         }
+        const changedAssignees =
+          current &&
+          (current.assignees.length !== row.assignees.length ||
+            current.assignees.some(
+              (user) => !row.assignees.some((old) => old.userId === user.userId),
+            ));
+        const action = !current
+          ? 'TASK_DELETED'
+          : current.columnId !== row.columnId
+            ? 'TASK_MOVED'
+            : current.archivedAt?.getTime() !== row.archivedAt?.getTime()
+              ? current.archivedAt
+                ? 'TASK_ARCHIVED'
+                : 'TASK_RESTORED'
+              : changedAssignees
+                ? 'TASK_ASSIGNED'
+                : !current.position.equals(row.position)
+                  ? 'TASK_REORDERED'
+                  : 'TASK_UPDATED';
+        await this.activity.record(tx, {
+          organizationId: board.workspace.organizationId,
+          projectId: board.project.id,
+          actorId: userId,
+          ...(current ? { taskId: id } : {}),
+          action,
+          metadata: {
+            taskId: id,
+            title: current?.title ?? row.title,
+            ...(current && current.columnId !== row.columnId
+              ? {
+                  fromColumnId: row.columnId,
+                  toColumnId: current.columnId,
+                  fromStatus: row.column.kind,
+                  toStatus: current.column.kind,
+                }
+              : {}),
+            ...(current ? { assigneeIds: current.assignees.map((user) => user.userId) } : {}),
+          },
+        });
         return result;
       },
-      { expectedRevision: options.expectedRevision },
+      { expectedRevision: options.expectedRevision, activity: false },
     );
     await this.notifications.afterCommit([...recipients]);
     return result;
@@ -155,31 +203,54 @@ export class TasksService {
   }
   async create(userId: string, input: TaskInput) {
     const column = await this.access.column(userId, input.columnId);
-    const result = await this.access.mutate(userId, column.boardId, 'read', async (tx, actor) => {
-      if (!(await tx.column.findFirst({ where: { id: input.columnId, boardId: actor.board.id } })))
-        throw new NotFoundException('Column not found');
-      await this.validateLinks(tx, actor, input.assigneeIds, input.labelIds);
-      if ((await tx.task.count({ where: { columnId: input.columnId } })) >= MAX_COLUMN_TASKS)
-        throw new ConflictException('This column reached its task limit');
-      const last = await tx.task.findFirst({
-        where: { columnId: input.columnId },
-        orderBy: { position: 'desc' },
-        select: { position: true },
-      });
-      const { assigneeIds, labelIds, ...fields } = input;
-      const row = await tx.task.create({
-        data: {
-          ...fields,
-          createdById: userId,
-          position: (last?.position ?? new Prisma.Decimal(0)).plus(1024),
-          assignees: { create: assigneeIds.map((id) => ({ userId: id })) },
-          labels: { create: labelIds.map((id) => ({ labelId: id })) },
-        },
-        include: taskInclude,
-      });
-      await this.notifications.record(tx, userId, row.id, assigneeIds, 'TASK_ASSIGNED', row.title);
-      return taskView(row, userId, actor.canManage);
-    });
+    const result = await this.access.mutate(
+      userId,
+      column.boardId,
+      'read',
+      async (tx, actor) => {
+        if (
+          !(await tx.column.findFirst({ where: { id: input.columnId, boardId: actor.board.id } }))
+        )
+          throw new NotFoundException('Column not found');
+        await this.validateLinks(tx, actor, input.assigneeIds, input.labelIds);
+        if ((await tx.task.count({ where: { columnId: input.columnId } })) >= MAX_COLUMN_TASKS)
+          throw new ConflictException('This column reached its task limit');
+        const last = await tx.task.findFirst({
+          where: { columnId: input.columnId },
+          orderBy: { position: 'desc' },
+          select: { position: true },
+        });
+        const { assigneeIds, labelIds, ...fields } = input;
+        const row = await tx.task.create({
+          data: {
+            ...fields,
+            createdById: userId,
+            position: (last?.position ?? new Prisma.Decimal(0)).plus(1024),
+            assignees: { create: assigneeIds.map((id) => ({ userId: id })) },
+            labels: { create: labelIds.map((id) => ({ labelId: id })) },
+          },
+          include: taskInclude,
+        });
+        await this.notifications.record(
+          tx,
+          userId,
+          row.id,
+          assigneeIds,
+          'TASK_ASSIGNED',
+          row.title,
+        );
+        await this.activity.record(tx, {
+          organizationId: actor.workspace.organizationId,
+          projectId: actor.project.id,
+          taskId: row.id,
+          actorId: userId,
+          action: 'TASK_CREATED',
+          metadata: { title: row.title, assigneeIds },
+        });
+        return taskView(row, userId, actor.canManage);
+      },
+      { activity: false },
+    );
     await this.notifications.afterCommit(input.assigneeIds.filter((id) => id !== userId));
     return result;
   }

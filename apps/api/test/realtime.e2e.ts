@@ -99,6 +99,7 @@ afterAll(async () => {
   replica?.stop();
   if (organizationId) {
     const projects = { workspace: { organizationId } };
+    await prisma.activity.deleteMany({ where: { organizationId } });
     await prisma.task.deleteMany({ where: { column: { board: { project: projects } } } });
     await prisma.column.deleteMany({ where: { board: { project: projects } } });
     await prisma.board.deleteMany({ where: { project: projects } });

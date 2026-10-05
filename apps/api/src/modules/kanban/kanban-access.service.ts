@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import type { Prisma } from '../../generated/prisma/client';
 import { PermissionService, type OrganizationDb } from '../authorization/permission.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { ActivityService } from '../activity/activity.service';
 
 export type BoardActor = Awaited<ReturnType<KanbanAccessService['board']>>;
 @Injectable()
@@ -11,6 +12,7 @@ export class KanbanAccessService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly events: RealtimeEventsService,
+    private readonly activity: ActivityService,
   ) {}
   async board(
     userId: string,
@@ -42,7 +44,7 @@ export class KanbanAccessService {
     id: string,
     permission: 'read' | 'manage',
     run: (tx: Prisma.TransactionClient, actor: BoardActor) => Promise<T>,
-    options: { expectedRevision?: number; bump?: boolean } = {},
+    options: { expectedRevision?: number; bump?: boolean; activity?: string | false } = {},
   ) {
     // Check visibility before taking locks, then repeat authorization under the tenant lock.
     const initial = await this.board(userId, id, permission);
@@ -63,8 +65,18 @@ export class KanbanAccessService {
             data: { revision: { increment: 1 } },
           });
         }
+        const result = await run(tx, actor);
+        if (options.activity !== false)
+          await this.activity.record(tx, {
+            organizationId: actor.workspace.organizationId,
+            projectId: actor.project.id,
+            actorId: userId,
+            action:
+              options.activity ?? (options.bump === false ? 'BOARD_DELETED' : 'BOARD_UPDATED'),
+            metadata: { boardId: id, name: actor.board.name },
+          });
         return {
-          result: await run(tx, actor),
+          result,
           revision: actor.board.revision + (options.bump === false ? 1 : 0),
         };
       },

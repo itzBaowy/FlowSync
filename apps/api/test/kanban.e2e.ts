@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { boardSnapshotSchema, taskDetailSchema, taskSchema } from '@flowsync/contracts';
+import {
+  activitySchema,
+  boardSnapshotSchema,
+  taskDetailSchema,
+  taskSchema,
+} from '@flowsync/contracts';
 import { startTestApi } from './helpers/api-server';
 config({ path: '../../.env', quiet: true });
 const prisma = new PrismaClient({
@@ -61,10 +66,93 @@ beforeAll(async () => {
     await request(`/projects/${projectId}/members`, 0, 'POST', { userId: users[actor]!.id });
   }
 });
+describe.sequential('Transactional project and task activity', () => {
+  let taskId: string;
+  let activityBoardId: string;
+  it('records task creation with a public actor and scoped pagination', async () => {
+    const board = await prisma.board.create({
+      data: {
+        projectId,
+        name: 'Activity',
+        columns: {
+          create: [
+            { name: 'Start', kind: 'TODO', position: 0 },
+            { name: 'Finish', kind: 'DONE', position: 1 },
+          ],
+        },
+      },
+      include: { columns: { orderBy: { position: 'asc' } } },
+    });
+    activityBoardId = board.id;
+    const response = await request('/tasks', 0, 'POST', {
+      columnId: board.columns[0]!.id,
+      title: 'Activity delivery',
+    });
+    expect(response.status).toBe(201);
+    taskId = (await response.json()).data.id;
+    const responseList = await request(`/tasks/${taskId}/activities?order=desc&limit=1`, 1);
+    expect(responseList.status).toBe(200);
+    const list = await responseList.json();
+    expect(list.meta.total).toBe(1);
+    const row = activitySchema.parse(list.data[0]);
+    expect(row).toMatchObject({
+      action: 'TASK_CREATED',
+      taskId,
+      projectId,
+      actor: { name: 'Owner' },
+      metadata: { title: 'Activity delivery' },
+    });
+    expect(list.data[0].actor).not.toHaveProperty('email');
+    expect((await request(`/tasks/${taskId}/activities`, 3)).status).toBe(404);
+    expect((await request(`/projects/${projectId}/activities`, 3)).status).toBe(404);
+    expect((await request(`/projects/${projectId}/activities?taskId=${randomUUID()}`)).status).toBe(
+      404,
+    );
+  });
+  it('records status transitions and rolls history back with stale mutations', async () => {
+    const task = await prisma.task.findUniqueOrThrow({
+      where: { id: taskId },
+      include: { column: { include: { board: true } } },
+    });
+    const done = await prisma.column.findFirstOrThrow({
+      where: { boardId: task.column.boardId, kind: 'DONE' },
+    });
+    const body = {
+      columnId: done.id,
+      beforeTaskId: null,
+      expectedVersion: 0,
+      expectedRevision: task.column.board.revision,
+    };
+    expect((await request(`/tasks/${taskId}/move`, 0, 'PATCH', body)).status).toBe(200);
+    expect((await request(`/tasks/${taskId}/move`, 0, 'PATCH', body)).status).toBe(409);
+    const list = await (await request(`/tasks/${taskId}/activities?order=desc`)).json();
+    expect(list.meta.total).toBe(2);
+    expect(list.data[0]).toMatchObject({
+      action: 'TASK_MOVED',
+      metadata: { fromStatus: 'TODO', toStatus: 'DONE' },
+    });
+  });
+  it('retains deletion history on the project without dangling task references', async () => {
+    expect((await request(`/tasks/${taskId}`, 0, 'DELETE', { expectedVersion: 1 })).status).toBe(
+      200,
+    );
+    const rows = await prisma.activity.findMany({ where: { projectId, action: 'TASK_DELETED' } });
+    expect(
+      rows.some(
+        (row) => row.taskId === null && (row.metadata as { taskId?: string })?.taskId === taskId,
+      ),
+    ).toBe(true);
+    expect((await request(`/tasks/${taskId}/activities`)).status).toBe(404);
+    await prisma.column.deleteMany({ where: { boardId: activityBoardId } });
+    await prisma.board.delete({ where: { id: activityBoardId } });
+    expect((await request(`/projects/${projectId}`, 0, 'DELETE')).status).toBe(409);
+  });
+});
 afterAll(async () => {
   api?.stop();
   if (organizationId) {
     const projects = { workspace: { organizationId } };
+    await prisma.activity.deleteMany({ where: { organizationId } });
     await prisma.task.deleteMany({ where: { column: { board: { project: projects } } } });
     await prisma.column.deleteMany({ where: { board: { project: projects } } });
     await prisma.board.deleteMany({ where: { project: projects } });
