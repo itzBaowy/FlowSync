@@ -1,0 +1,36 @@
+{
+  "name": "@flowsync/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../scripts/web.mjs dev",
+    "build": "next build",
+    "start": "node ../../scripts/web.mjs start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flowsync/contracts": "*",
+    "next": "16.3.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@tanstack/react-query": "^5.90.5",
+    "react-hook-form": "^7.65.0",
+    "@hookform/resolvers": "^5.2.2",
+    "zod": "^4.1.12",
+    "lucide-react": "^0.548.0",
+    "next-themes": "^0.4.6",
+    "sonner": "^2.0.7",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.1",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.16",
+    "@tailwindcss/postcss": "^4.1.16",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2"
+  }
+}

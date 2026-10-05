@@ -1,0 +1,10 @@
+node_modules
+package-lock.json
+.next
+dist
+.npm-cache
+.local
+apps/api/src/generated
+**/next-env.d.ts
+Requirements.md
+*.sql
