@@ -5,12 +5,14 @@ import type { NotificationType, Prisma } from '../../generated/prisma/client';
 import { PaginatedResult } from '../../common/pagination';
 import { PermissionService } from '../authorization/permission.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { NotificationOutboxService } from '../queue/notification-outbox.service';
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly events: RealtimeEventsService,
+    private readonly outbox: NotificationOutboxService,
   ) {}
   visible(userId: string): Prisma.NotificationWhereInput {
     return {
@@ -183,9 +185,11 @@ export class NotificationsService {
             ? 'commented on'
             : 'updated';
     const message = [...`${actor.name} ${verb} "${title}"`].slice(0, 240).join('');
-    await tx.notification.createMany({
+    const notifications = await tx.notification.createManyAndReturn({
       data: recipients.map((userId) => ({ userId, taskId, type, title: message })),
+      select: { id: true, type: true },
     });
+    await this.outbox.emails(tx, notifications);
     return recipients;
   }
   afterCommit(userIds: string[]) {

@@ -13,6 +13,7 @@ import { KanbanAccessService, type BoardActor } from './kanban-access.service';
 import { taskInclude, taskView, type TaskRow } from './kanban-view';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
+import { NotificationOutboxService } from '../queue/notification-outbox.service';
 const MAX_COLUMN_TASKS = 10000;
 export type TaskActor = { row: TaskRow; board: BoardActor; view: ReturnType<typeof taskView> };
 @Injectable()
@@ -22,6 +23,7 @@ export class TasksService {
     private readonly access: KanbanAccessService,
     private readonly notifications: NotificationsService,
     private readonly activity: ActivityService,
+    private readonly outbox: NotificationOutboxService,
   ) {}
   async locate(userId: string, id: string) {
     const task = await this.prisma.task.findUnique({
@@ -94,12 +96,19 @@ export class TasksService {
             title: true,
             columnId: true,
             archivedAt: true,
+            dueDate: true,
             position: true,
             column: { select: { kind: true } },
             assignees: { select: { userId: true } },
           },
         });
         if (current) {
+          await this.outbox.reminder(
+            tx,
+            id,
+            current.dueDate,
+            !!current.archivedAt || current.column.kind === 'DONE',
+          );
           const oldIds = row.assignees.map((user) => user.userId);
           const newIds = current.assignees
             .map((user) => user.userId)
@@ -239,6 +248,7 @@ export class TasksService {
           'TASK_ASSIGNED',
           row.title,
         );
+        await this.outbox.reminder(tx, row.id, row.dueDate, row.column.kind === 'DONE');
         await this.activity.record(tx, {
           organizationId: actor.workspace.organizationId,
           projectId: actor.project.id,

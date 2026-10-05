@@ -267,6 +267,7 @@ model Task {
   comments    Comment[]
   activities  Activity[]
   notifications Notification[]
+  dueReminder DueReminder?
   @@unique([columnId, position])
   @@index([columnId, archivedAt])
   @@index([dueDate, archivedAt])
@@ -369,10 +370,52 @@ model Notification {
   body      String?
   readAt    DateTime?
   createdAt DateTime @default(now())
+  dedupeKey String? @unique @db.VarChar(200)
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   task      Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  delivery  NotificationDelivery?
   @@index([userId, readAt, createdAt])
   @@index([taskId])
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+model NotificationDelivery {
+  notificationId String @id @db.Uuid
+  environment    String @db.VarChar(20)
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int @default(0)
+  enqueuedAt     DateTime?
+  deliveredAt    DateTime?
+  lastError      String? @db.VarChar(80)
+  createdAt      DateTime @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  @@index([environment, status, createdAt])
+}
+
+model DueReminder {
+  id          String @id @default(uuid()) @db.Uuid
+  taskId      String @unique @db.Uuid
+  dueDate     DateTime
+  runAt       DateTime
+  environment String @db.VarChar(20)
+  version     Int @default(0)
+  status      ReminderStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  task        Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  @@index([environment, status, runAt])
 }
 
 model ObjectCleanup {

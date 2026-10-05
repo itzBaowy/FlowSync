@@ -204,6 +204,90 @@ describe.sequential('Global discovery and personal task scope', () => {
     ).toBe(0);
   });
 });
+describe.sequential('Transactional notification delivery scheduling', () => {
+  let taskId: string;
+  let startId: string;
+  let doneId: string;
+  let reminderId: string;
+  it('reserves a delivery and reminder atomically with task creation', async () => {
+    const board = await prisma.board.create({
+      data: {
+        projectId,
+        name: 'Outbox',
+        columns: {
+          create: [
+            { name: 'Start', position: 0 },
+            { name: 'Done', kind: 'DONE', position: 1 },
+          ],
+        },
+      },
+      include: { columns: { orderBy: { position: 'asc' } } },
+    });
+    startId = board.columns[0]!.id;
+    doneId = board.columns[1]!.id;
+    const dueDate = new Date(Date.now() + 12 * 3600000).toISOString();
+    const response = await request('/tasks', 0, 'POST', {
+      columnId: startId,
+      title: 'Scheduled release',
+      dueDate,
+      assigneeIds: [users[1]!.id],
+    });
+    expect(response.status).toBe(201);
+    taskId = (await response.json()).data.id;
+    const notification = await prisma.notification.findFirstOrThrow({
+      where: { taskId, type: 'TASK_ASSIGNED' },
+      include: { delivery: true },
+    });
+    expect(notification.delivery).toMatchObject({
+      status: 'PENDING',
+      environment: 'test',
+      notificationId: notification.id,
+    });
+    const reminder = await prisma.dueReminder.findUniqueOrThrow({ where: { taskId } });
+    reminderId = reminder.id;
+    expect(reminder).toMatchObject({ environment: 'test', version: 0, status: 'PENDING' });
+    expect(reminder.runAt.getTime()).toBe(reminder.dueDate.getTime() - 86400000);
+  });
+  it('versions changed deadlines and cancels/re-enables reminders across task state changes', async () => {
+    const dueDate = new Date(Date.now() + 18 * 3600000).toISOString();
+    expect(
+      (await request(`/tasks/${taskId}`, 0, 'PATCH', { dueDate, expectedVersion: 0 })).status,
+    ).toBe(200);
+    expect(
+      (await request(`/tasks/${taskId}`, 0, 'PATCH', { dueDate: null, expectedVersion: 0 })).status,
+    ).toBe(409);
+    expect(await prisma.dueReminder.findUniqueOrThrow({ where: { taskId } })).toMatchObject({
+      id: reminderId,
+      version: 1,
+      status: 'PENDING',
+    });
+    for (const [columnId, version, status] of [
+      [doneId, 1, 'CANCELLED'],
+      [startId, 2, 'PENDING'],
+    ] as const) {
+      const board = await prisma.board.findFirstOrThrow({
+        where: { columns: { some: { id: startId } } },
+      });
+      expect(
+        (
+          await request(`/tasks/${taskId}/move`, 0, 'PATCH', {
+            columnId,
+            expectedVersion: version,
+            expectedRevision: board.revision,
+            beforeTaskId: null,
+          })
+        ).status,
+      ).toBe(200);
+      expect((await prisma.dueReminder.findUniqueOrThrow({ where: { taskId } })).status).toBe(
+        status,
+      );
+    }
+    expect((await request(`/tasks/${taskId}`, 0, 'DELETE', { expectedVersion: 3 })).status).toBe(
+      200,
+    );
+    expect(await prisma.dueReminder.count({ where: { taskId } })).toBe(0);
+  });
+});
 describe.sequential('Private task attachments and object cleanup', () => {
   let taskId: string;
   let attachmentId: string;
