@@ -11,11 +11,20 @@ import {
 import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import { map } from 'rxjs/operators';
+import { PaginatedResult } from './pagination';
 
 @Injectable()
 export class ResponseInterceptor implements NestInterceptor {
   intercept(_context: ExecutionContext, next: CallHandler) {
-    return next.handle().pipe(map((data: unknown) => ({ data, meta: {} })));
+    return next
+      .handle()
+      .pipe(
+        map((data: unknown) =>
+          data instanceof PaginatedResult
+            ? { data: data.data, meta: data.meta }
+            : { data, meta: {} },
+        ),
+      );
   }
 }
 

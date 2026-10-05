@@ -11,6 +11,7 @@ import { HealthModule } from './modules/health/health.module';
 import { OriginGuard } from './common/origin.guard';
 import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { HttpErrorFilter } from './common/http';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { HttpErrorFilter } from './common/http';
     }),
     AuthModule,
     HealthModule,
+    OrganizationsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },
