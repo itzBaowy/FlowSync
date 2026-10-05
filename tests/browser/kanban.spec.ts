@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { hash } from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../apps/api/src/generated/prisma/client';
-test('board creation and scoped column management', async ({ page }) => {
+test('board management, task details, drag and drop, keyboard sorting and rollback', async ({
+  page,
+}) => {
   const suffix = randomUUID();
   const email = `kanban-browser-${suffix}@example.com`;
   const password = 'browser-kanban-password';
@@ -94,14 +96,118 @@ test('board creation and scoped column management', async ({ page }) => {
     await expect(panel.getByText(/IN_PROGRESS \/ Version/)).toBeVisible();
     await panel.getByRole('button', { name: 'Close task', exact: true }).click();
     await expect(canvas.getByRole('heading', { name: 'In progress 1' })).toBeVisible();
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    const handle = page.getByRole('button', { name: 'Drag Fix launch checklist', exact: true });
+    await handle.focus();
+    await expect(handle).toBeEnabled();
+    await page.keyboard.press('Space');
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('status')).toContainText('over Review');
+    await page.keyboard.press('Space');
+    await expect(canvas.getByRole('heading', { name: 'Review 1' })).toBeVisible();
+    await page.getByRole('button', { name: 'New task', exact: true }).click();
+    await page.getByLabel('Task title', { exact: true }).fill('Second review');
+    await page.getByLabel('Task column', { exact: true }).selectOption({ label: 'Review' });
+    await page.getByRole('button', { name: 'Create task now' }).click();
+    await panel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await handle.focus();
+    await page.keyboard.press('Space');
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('status')).toContainText('over Second review');
+    await page.keyboard.press('Space');
+    const review = canvas.getByRole('region', { name: 'Review', exact: true });
+    await expect
+      .poll(async () =>
+        review
+          .getByRole('article')
+          .getByRole('button')
+          .filter({ hasNotText: /^$/ })
+          .allTextContents(),
+      )
+      .toEqual(['Second review', 'Fix launch checklist']);
+    const board = await prisma.board.findFirstOrThrow({ where: { projectId: project.id } });
+    await expect
+      .poll(async () => {
+        const rows = await prisma.task.findMany({
+          where: { column: { boardId: board.id, kind: 'REVIEW' } },
+          orderBy: { position: 'asc' },
+        });
+        return rows.map((row) => row.title);
+      })
+      .toEqual(['Second review', 'Fix launch checklist']);
+    // Hold a rejected API response to verify the optimistic state before rollback.
+    let rejectMove: (() => void) | undefined;
+    const responseGate = new Promise<void>((resolve) => {
+      rejectMove = resolve;
+    });
+    await page.route('**/api/tasks/*/move', async (route) => {
+      await responseGate;
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          statusCode: 409,
+          code: 'CONFLICT',
+          message: 'Board changed. Reload and try again',
+          errors: [],
+        }),
+      });
+    });
+    async function dragToBlocked() {
+      const source = await handle.boundingBox();
+      const target = await canvas
+        .getByRole('region', { name: 'Blocked', exact: true })
+        .boundingBox();
+      if (!source || !target) throw new Error('Drag target not visible');
+      await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(target.x + target.width / 2, target.y + 90, { steps: 12 });
+      await page.mouse.up();
+    }
+    await dragToBlocked();
+    await expect(canvas.getByRole('heading', { name: 'Blocked 1' })).toBeVisible();
+    rejectMove?.();
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('Board changed');
+    await expect(canvas.getByRole('heading', { name: 'Blocked 0' })).toBeVisible();
+    await page.unroute('**/api/tasks/*/move');
+    await dragToBlocked();
+    await expect(canvas.getByRole('heading', { name: 'Blocked 1' })).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          (
+            await prisma.task.findFirstOrThrow({
+              where: { title: 'Fix launch checklist', column: { boardId: board.id } },
+              include: { column: true },
+            })
+          ).column.name,
+      )
+      .toBe('Blocked');
     await page.reload();
-    await canvas.getByRole('button', { name: /Fix launch checklist/ }).click();
+    await expect(canvas.getByRole('heading', { name: 'Blocked 1' })).toBeVisible();
+    await page.screenshot({ path: 'docs/screenshots/kanban.png', fullPage: true });
+    await page.reload();
+    await canvas.getByRole('button', { name: 'Fix launch checklist', exact: true }).click();
     await expect(panel.getByRole('checkbox', { name: 'Review API', exact: true })).toBeChecked();
     await expect(panel.getByLabel('Task due date')).toHaveValue('2026-10-20');
     await panel.getByRole('button', { name: 'Archive task', exact: true }).click();
     await expect(panel.getByRole('button', { name: 'Restore task', exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Close task', exact: true }).click();
-    await expect(canvas.getByRole('heading', { name: 'In progress 0' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Blocked 0' })).toBeVisible();
     await page.getByRole('checkbox', { name: 'Archived tasks', exact: true }).check();
     await page
       .getByLabel('Task results', { exact: true })
@@ -110,11 +216,12 @@ test('board creation and scoped column management', async ({ page }) => {
     await panel.getByRole('button', { name: 'Restore task', exact: true }).click();
     await panel.getByRole('button', { name: 'Close task', exact: true }).click();
     await page.getByRole('button', { name: 'Back to board', exact: true }).click();
-    await expect(canvas.getByRole('heading', { name: 'In progress 1' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Blocked 1' })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       .toBe(true);
+    await page.screenshot({ path: 'docs/screenshots/kanban-mobile.png', fullPage: true });
   } finally {
     if (organizationId) {
       const projects = { workspace: { organizationId } };

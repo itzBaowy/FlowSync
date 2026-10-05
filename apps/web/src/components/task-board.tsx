@@ -9,6 +9,7 @@ import { Input } from './ui/input';
 import { Notice, Pager, selectClass } from './organization-ui';
 import { TaskForm } from './task-form';
 import { TaskPanel } from './task-panel';
+import { KanbanCanvas } from './kanban-canvas';
 export function TaskBoard({ board }: { board: BoardSnapshot }) {
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -144,53 +145,14 @@ export function TaskBoard({ board }: { board: BoardSnapshot }) {
           </Button>
         </section>
       ) : (
-        <div className="flex min-w-0 gap-4 overflow-x-auto pb-5" aria-label="Kanban columns">
-          {board.columns.map((column) => (
-            <section
-              key={column.id}
-              aria-label={column.name}
-              className="w-72 shrink-0 space-y-3 rounded-xl border border-border bg-muted/30 p-3"
-            >
-              <h3 className="font-semibold">
-                {column.name}{' '}
-                <span className="text-xs text-muted-foreground">{column.totalTasks}</span>
-              </h3>
-              {column.tasks.map((task) => (
-                <button
-                  key={task.id}
-                  onClick={() => setSelected(task.id)}
-                  className="block w-full rounded-lg border border-border bg-card p-3 text-left shadow-sm hover:border-primary"
-                >
-                  <span className="block break-words text-sm font-medium">{task.title}</span>
-                  <span className="mt-2 block text-xs text-muted-foreground">
-                    {task.priority}
-                    {task.dueDate ? ` / Due ${task.dueDate.slice(0, 10)}` : ''}
-                  </span>
-                  {task.assignees.length > 0 && (
-                    <span className="mt-2 block truncate text-xs text-muted-foreground">
-                      {task.assignees.map((user) => user.name).join(', ')}
-                    </span>
-                  )}
-                </button>
-              ))}
-              {column.tasks.length === 0 && (
-                <p className="py-8 text-center text-xs text-muted-foreground">No tasks yet</p>
-              )}
-              {column.totalTasks > column.tasks.length && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setColumnId(column.id);
-                    setPage(1);
-                  }}
-                >
-                  Browse all {column.totalTasks} tasks
-                </Button>
-              )}
-            </section>
-          ))}
-        </div>
+        <KanbanCanvas
+          board={board}
+          onOpen={setSelected}
+          onBrowse={(id) => {
+            setColumnId(id);
+            setPage(1);
+          }}
+        />
       )}
       {selected && (
         <TaskPanel
