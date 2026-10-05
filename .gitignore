@@ -1,0 +1,14 @@
+node_modules/
+.npm-cache/
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+apps/api/src/generated/
+.local/
+*.log
