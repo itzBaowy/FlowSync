@@ -20,7 +20,7 @@ export class ApiError extends Error {
 export function setAccessToken(token: string | null) {
   accessToken = token;
 }
-async function decode<T>(response: Response): Promise<T> {
+async function decodeEnvelope<T>(response: Response): Promise<ApiResponse<T>> {
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const parsed = errorSchema.safeParse(body);
@@ -32,7 +32,10 @@ async function decode<T>(response: Response): Promise<T> {
   }
   if (typeof body !== 'object' || body === null || !('data' in body))
     throw new ApiError('Unexpected server response', 502, 'INVALID_RESPONSE');
-  return (body as ApiResponse<T>).data;
+  return body as ApiResponse<T>;
+}
+async function decode<T>(response: Response): Promise<T> {
+  return (await decodeEnvelope<T>(response)).data;
 }
 export async function refreshSession(): Promise<AuthSession> {
   if (!pendingRefresh) {
@@ -49,9 +52,14 @@ export async function refreshSession(): Promise<AuthSession> {
   }
   return pendingRefresh;
 }
-export async function api<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+export async function apiEnvelope<T>(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
-  if (options.body) headers.set('Content-Type', 'application/json');
+  if (options.body && !(options.body instanceof FormData))
+    headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -60,7 +68,10 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
   });
   if (response.status === 401 && retry && !path.startsWith('/auth/')) {
     await refreshSession();
-    return api<T>(path, options, false);
+    return apiEnvelope<T>(path, options, false);
   }
-  return decode<T>(response);
+  return decodeEnvelope<T>(response);
+}
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return (await apiEnvelope<T>(path, options)).data;
 }

@@ -131,13 +131,20 @@ export function Dashboard() {
             <Home size={17} />
             Overview
           </Link>
+          <Link
+            href="/organizations"
+            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
+          >
+            <Layers3 size={17} />
+            Organizations
+          </Link>
         </nav>
         <div className="mt-9 px-3">
           <h2 className="text-[10px] font-semibold tracking-[.15em] text-muted-foreground">
             WORKSPACES
           </h2>
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-            Your team spaces will appear here once organization setup is available.
+            Create an organization to bring your team together. Shared workspaces are coming next.
           </p>
         </div>
         <div className="mt-auto rounded-lg border border-border bg-card p-3">
@@ -246,16 +253,16 @@ export function Dashboard() {
               </div>
               <h3 className="mt-5 font-semibold">Good things start with a little space</h3>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                Your account is ready. Organization and project creation will arrive in the next
-                milestones.
+                Your account is ready. Create an organization and invite your team. Project creation
+                will arrive in the next milestones.
               </p>
-              <a
-                href="#roadmap"
+              <Link
+                href="/organizations"
                 className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
               >
-                See what’s coming
+                Bring your team together
                 <ArrowUpRight size={15} />
-              </a>
+              </Link>
             </div>
           </section>
           <section id="roadmap" className="mt-9">
