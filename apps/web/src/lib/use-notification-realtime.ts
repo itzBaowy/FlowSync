@@ -25,7 +25,13 @@ export function useNotificationRealtime(userId?: string) {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
     });
-    const refresh = () => client.invalidateQueries({ queryKey: ['notifications', userId] });
+    const refresh = () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ['notifications', userId] }),
+        ...['dashboard', 'my-tasks', 'search'].map((key) =>
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
+      ]);
     async function renew() {
       if (stopped || renewing) return;
       renewing = true;

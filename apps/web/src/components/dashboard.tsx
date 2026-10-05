@@ -3,25 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import {
-  Home,
-  ChevronsUpDown,
-  Layers3,
-  ArrowUpRight,
-  LogOut,
-  Menu,
-  X,
-  CheckCircle2,
-  CircleDashed,
-  ShieldCheck,
-  Activity,
-  Loader2,
-} from 'lucide-react';
+import { Home, ChevronsUpDown, Layers3, LogOut, Menu, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ApiError, api, refreshSession, setAccessToken } from '@/lib/api';
 import { Button } from './ui/button';
-import { ThemeToggle } from './theme-toggle';
-import { NotificationBell } from './notification-bell';
+import { AccountControls } from './account-controls';
+import { DashboardWork } from './dashboard-work';
 import { Logo } from './logo';
 
 export function Dashboard() {
@@ -190,10 +177,7 @@ export function Dashboard() {
               <span className="text-foreground">Overview</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <ThemeToggle />
-          </div>
+          <AccountControls />
         </header>
         <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10 lg:py-14">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -210,124 +194,14 @@ export function Dashboard() {
               </p>
             </div>
             <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-              Your personal space
+              {health.isPending
+                ? 'Checking connection...'
+                : health.error
+                  ? 'Connection unavailable'
+                  : 'Connected'}
             </span>
           </div>
-          <section className="mt-10 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                icon: ShieldCheck,
-                label: 'Your account',
-                value: 'Ready',
-                detail: 'Securely signed in',
-              },
-              {
-                icon: Layers3,
-                label: 'Team workspace',
-                value: 'Ready',
-                detail: 'Organize your team into focused spaces',
-              },
-              {
-                icon: Activity,
-                label: 'Connection',
-                value: health.isPending ? 'Checking…' : health.error ? 'Unavailable' : 'Connected',
-                detail: health.error
-                  ? 'Please try again in a moment'
-                  : 'Your workspace services are ready',
-              },
-            ].map(({ icon: Icon, label, value, detail }) => (
-              <div key={label} className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{label}</span>
-                  <Icon size={16} className="text-muted-foreground" />
-                </div>
-                <p className="mt-4 text-2xl font-semibold tracking-tight">{value}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
-              </div>
-            ))}
-          </section>
-          <section className="mt-8 rounded-xl border border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-sm font-semibold">Your teams and projects</h2>
-              <span className="text-xs text-muted-foreground">Choose a space</span>
-            </div>
-            <div className="flex flex-col items-center px-6 py-14 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/50">
-                <Layers3 size={24} className="text-muted-foreground" />
-              </div>
-              <h3 className="mt-5 font-semibold">Good things start with a little space</h3>
-              <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                Choose an organization to open its workspaces and projects, or create a new home for
-                your team.
-              </p>
-              <Link
-                href="/organizations"
-                className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-              >
-                Bring your team together
-                <ArrowUpRight size={15} />
-              </Link>
-            </div>
-          </section>
-          <section id="roadmap" className="mt-9">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">The road ahead</h2>
-              <span className="text-xs text-muted-foreground">One thoughtful step at a time</span>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {[
-                {
-                  number: '01',
-                  title: 'A solid foundation',
-                  text: 'Sign in securely and keep your profile close at hand.',
-                  done: true,
-                },
-                {
-                  number: '02',
-                  title: 'Bring your team together',
-                  text: 'Organizations, email invitations, roles, and team ownership.',
-                  done: true,
-                },
-                {
-                  number: '03',
-                  title: 'Plan work together',
-                  text: 'Workspaces, projects, member access, and clear project overviews.',
-                  done: true,
-                },
-                {
-                  number: '04',
-                  title: 'Find your team’s flow',
-                  text: 'Kanban boards, tasks, assignees, labels, and checklists.',
-                  done: true,
-                },
-                {
-                  number: '05',
-                  title: 'Stay in sync',
-                  text: 'Live board updates, online presence, and personal notifications.',
-                  done: true,
-                },
-                {
-                  number: '06',
-                  title: 'Keep the conversation close',
-                  text: 'Comments, mentions, attachments, and project activity.',
-                  done: false,
-                },
-              ].map((step) => (
-                <div key={step.number} className="rounded-xl border border-border p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-muted-foreground">{step.number}</span>
-                    {step.done ? (
-                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <CircleDashed size={16} className="text-muted-foreground" />
-                    )}
-                  </div>
-                  <h3 className="mt-4 text-sm font-medium">{step.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{step.text}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <DashboardWork />
           <footer className="mt-12 flex flex-wrap justify-between gap-3 border-t border-border pt-5 text-xs text-muted-foreground">
             <span>FlowSync — room to do your best work.</span>
             <span>Thoughtfully built. Step by step.</span>

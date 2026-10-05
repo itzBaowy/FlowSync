@@ -174,6 +174,9 @@ test('two users receive board and task updates, recover on reconnect and lose re
       memberPage.getByRole('button', { name: 'Notifications (0 unread)', exact: true }),
     ).toBeVisible();
     await memberPage.goto('/dashboard');
+    await expect(memberPage.getByRole('region', { name: 'My tasks', exact: true })).toContainText(
+      'Changed while offline',
+    );
     const refreshedTask = page.waitForResponse(
       (response) =>
         /\/api\/tasks\/[0-9a-f-]+$/.test(response.url()) && response.request().method() === 'GET',
@@ -191,6 +194,30 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await expect(
       memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }),
     ).toBeVisible();
+    await expect(memberPage.getByRole('region', { name: 'My tasks', exact: true })).toContainText(
+      'Dashboard delivery',
+    );
+    await memberPage.getByRole('button', { name: 'Global search', exact: true }).click();
+    const searchDialog = memberPage.getByRole('dialog', {
+      name: 'Search your workspace',
+      exact: true,
+    });
+    await searchDialog.getByLabel('Search everything').fill('Dashboard');
+    await searchDialog.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(
+      searchDialog.getByRole('region', { name: 'Search tasks', exact: true }),
+    ).toContainText('Dashboard delivery');
+    await searchDialog.getByLabel('Search everything').fill('Live Release');
+    await searchDialog.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(
+      searchDialog.getByRole('region', { name: 'Search projects', exact: true }),
+    ).toContainText('Live Release');
+    await searchDialog.getByLabel('Search everything').fill('Realtime');
+    await searchDialog.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(
+      searchDialog.getByRole('region', { name: 'Search members', exact: true }),
+    ).toContainText('Realtime Owner');
+    await searchDialog.getByRole('button', { name: 'Close search', exact: true }).click();
     await memberPage.getByRole('button', { name: 'Notifications (1 unread)', exact: true }).click();
     await expect(inbox).toContainText('updated "Dashboard delivery"');
     await inbox.getByRole('link', { name: 'Open task', exact: true }).first().click();
@@ -199,6 +226,29 @@ test('two users receive board and task updates, recover on reconnect and lose re
     );
     await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await expect(memberPage).not.toHaveURL(/taskId=/);
+    await memberPage.getByRole('button', { name: 'Global search', exact: true }).click();
+    await searchDialog.getByLabel('Search everything').fill('Dashboard');
+    await searchDialog.getByRole('button', { name: 'Search', exact: true }).click();
+    await searchDialog
+      .getByRole('region', { name: 'Search tasks', exact: true })
+      .getByRole('link', { name: /Dashboard delivery/ })
+      .click();
+    await expect(memberPanel.getByLabel('Task title', { exact: true })).toHaveValue(
+      'Dashboard delivery',
+    );
+    await memberComments
+      .getByLabel('Comment text', { exact: true })
+      .fill('Searchable delivery feedback');
+    await memberComments.getByRole('button', { name: 'Post comment', exact: true }).click();
+    await expect(memberComments).toContainText('Searchable delivery feedback');
+    await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
+    await memberPage.getByRole('button', { name: 'Global search', exact: true }).click();
+    await searchDialog.getByLabel('Search everything').fill('Searchable delivery');
+    await searchDialog.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(
+      searchDialog.getByRole('region', { name: 'Search comments', exact: true }),
+    ).toContainText('Searchable delivery feedback');
+    await searchDialog.getByRole('button', { name: 'Close search', exact: true }).click();
     await page.goto(`/projects?workspaceId=${workspace.id}&id=${project.id}`);
     await page
       .getByRole('article', { name: `Space member ${member.email}`, exact: true })
