@@ -5,7 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { io, type Socket } from 'socket.io-client';
 import { JwtService } from '@nestjs/jwt';
-import { boardJoinedSchema, presenceSchema } from '@flowsync/contracts';
+import { boardJoinedSchema, presenceSchema, notificationSchema } from '@flowsync/contracts';
 import Redis from 'ioredis';
 import { startTestApi } from './helpers/api-server';
 config({ path: '../../.env', quiet: true });
@@ -309,5 +309,89 @@ describe.sequential('Distributed online presence and connection leases', () => {
     for (let index = 0; index < 10; index++)
       await connect(users[2]!.token, process.env.WEB_URL, index % 2 ? replica! : api);
     await expect(connect(users[2]!.token)).rejects.toThrow('RATE_LIMITED');
+  });
+});
+async function notifyRequest(path: string, actor = 1, method = 'GET', body?: unknown) {
+  return fetch(`${api.baseUrl}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${users[actor]!.token}`, 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+describe.sequential('Transactional and private task notifications', () => {
+  it('persists assignment notifications, fans out per user and rejects stale duplicate updates', async () => {
+    const member = await connect(users[1]!.token, process.env.WEB_URL, replica!);
+    const event = nextEvent(member, 'notification:changed');
+    const column = await prisma.column.findFirstOrThrow({ where: { boardId } });
+    const response = await notifyRequest('/tasks', 0, 'POST', {
+      columnId: column.id,
+      title: 'Notify assignment',
+      assigneeIds: [users[0]!.id, users[1]!.id],
+    });
+    expect(response.status).toBe(201);
+    expect(await event).toEqual({});
+    const task = (await response.json()).data;
+    const count = await (await notifyRequest('/notifications/unread-count')).json();
+    expect(count.data.unread).toBe(1);
+    expect((await (await notifyRequest('/notifications/unread-count', 0)).json()).data.unread).toBe(
+      0,
+    );
+    const list = await (
+      await notifyRequest('/notifications?unread=true&search=Notify&limit=1')
+    ).json();
+    expect(list.meta.total).toBe(1);
+    const notification = notificationSchema.parse(list.data[0]);
+    expect(notification.type).toBe('TASK_ASSIGNED');
+    expect(notification.taskId).toBe(task.id);
+    expect(notification.title).toContain('Owner assigned you to');
+    expect(
+      (await notifyRequest(`/notifications/${notification.id}/read`, 0, 'PATCH', { read: true }))
+        .status,
+    ).toBe(404);
+    expect(
+      (await notifyRequest(`/notifications/${notification.id}/read`, 2, 'PATCH', { read: true }))
+        .status,
+    ).toBe(404);
+    expect(
+      (await notifyRequest(`/notifications/${notification.id}/read`, 1, 'PATCH', { read: true }))
+        .status,
+    ).toBe(200);
+    expect((await (await notifyRequest('/notifications/unread-count')).json()).data.unread).toBe(0);
+    const updated = nextEvent(member, 'notification:changed');
+    expect(
+      (
+        await notifyRequest(`/tasks/${task.id}`, 0, 'PATCH', {
+          title: 'Updated notification',
+          expectedVersion: 0,
+        })
+      ).status,
+    ).toBe(200);
+    await updated;
+    expect(
+      (
+        await notifyRequest(`/tasks/${task.id}`, 0, 'PATCH', {
+          title: 'Duplicate',
+          expectedVersion: 0,
+        })
+      ).status,
+    ).toBe(409);
+    expect((await (await notifyRequest('/notifications')).json()).meta.total).toBe(2);
+    expect((await notifyRequest('/notifications/read-all', 1, 'POST')).status).toBe(201);
+    expect((await (await notifyRequest('/notifications/unread-count')).json()).data.unread).toBe(0);
+    expect(
+      (await notifyRequest(`/notifications/${notification.id}/read`, 1, 'PATCH', { read: false }))
+        .status,
+    ).toBe(200);
+    expect((await (await notifyRequest('/notifications/unread-count')).json()).data.unread).toBe(1);
+    // Retained notification titles must disappear when the recipient loses parent scope.
+    await prisma.workspaceMember.deleteMany({
+      where: { userId: users[1]!.id, workspace: { organizationId } },
+    });
+    expect((await (await notifyRequest('/notifications')).json()).meta.total).toBe(0);
+    expect((await (await notifyRequest('/notifications/unread-count')).json()).data.unread).toBe(0);
+    expect(
+      (await notifyRequest(`/notifications/${notification.id}/read`, 1, 'PATCH', { read: true }))
+        .status,
+    ).toBe(404);
   });
 });

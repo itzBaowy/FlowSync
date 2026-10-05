@@ -10,6 +10,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import type { Namespace, Socket } from 'socket.io';
 import type Redis from 'ioredis';
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import {
   boardChangedSchema,
   boardRoomSchema,
@@ -111,7 +112,16 @@ export class RealtimeGateway
       const event = boardChangedSchema.safeParse(input);
       if (event.success) void this.deliver(event.data);
     });
-    this.events.attach(namespace, (event) => this.deliver(event));
+    const notify = (userIds: string[]) => {
+      for (const socket of namespace.sockets.values() as Iterable<Client>)
+        if (userIds.includes(socket.data.userId) && socket.data.expiresAt > Date.now())
+          socket.emit('notification:changed', {});
+    };
+    namespace.on('internal:notifications', (input: unknown) => {
+      const ids = z.array(z.string().uuid()).max(500).safeParse(input);
+      if (ids.success) notify(ids.data);
+    });
+    this.events.attach(namespace, (event) => this.deliver(event), notify);
     namespace.on('internal:presence', (input: unknown) => {
       const parsed = boardRoomSchema.safeParse(input);
       if (parsed.success) void this.deliverPresence(parsed.data.boardId);

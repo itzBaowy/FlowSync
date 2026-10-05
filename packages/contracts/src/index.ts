@@ -44,3 +44,4 @@ export * from './organizations';
 export * from './projects';
 export * from './kanban';
 export * from './realtime';
+export * from './notifications';

@@ -8,13 +8,19 @@ import type { Prisma } from '../../generated/prisma/client';
 export class RealtimeEventsService {
   private namespace?: Namespace;
   private deliver?: (event: BoardChanged) => Promise<void>;
+  private notify?: (userIds: string[]) => void;
   constructor(
     private readonly logger: PinoLogger,
     private readonly prisma: PrismaService,
   ) {}
-  attach(namespace: Namespace, deliver: (event: BoardChanged) => Promise<void>) {
+  attach(
+    namespace: Namespace,
+    deliver: (event: BoardChanged) => Promise<void>,
+    notify: (userIds: string[]) => void,
+  ) {
     this.namespace = namespace;
     this.deliver = deliver;
+    this.notify = notify;
   }
   async boardChanged(event: BoardChanged) {
     if (!this.namespace || !this.deliver) return;
@@ -37,6 +43,15 @@ export class RealtimeEventsService {
       );
     } catch {
       this.logger.warn('Realtime snapshot recovery required');
+    }
+  }
+  async notificationsChanged(userIds: string[]) {
+    if (!userIds.length || !this.namespace || !this.notify) return;
+    try {
+      this.namespace.serverSideEmit('internal:notifications', userIds);
+      this.notify(userIds);
+    } catch {
+      this.logger.warn('Notification delivery deferred to inbox recovery');
     }
   }
 }

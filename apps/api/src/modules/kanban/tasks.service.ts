@@ -11,6 +11,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { PaginatedResult } from '../../common/pagination';
 import { KanbanAccessService, type BoardActor } from './kanban-access.service';
 import { taskInclude, taskView, type TaskRow } from './kanban-view';
+import { NotificationsService } from '../notifications/notifications.service';
 const MAX_COLUMN_TASKS = 10000;
 export type TaskActor = { row: TaskRow; board: BoardActor; view: ReturnType<typeof taskView> };
 @Injectable()
@@ -18,6 +19,7 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: KanbanAccessService,
+    private readonly notifications: NotificationsService,
   ) {}
   async locate(userId: string, id: string) {
     const task = await this.prisma.task.findUnique({
@@ -64,7 +66,8 @@ export class TasksService {
     options: { expectedRevision?: number; allowArchived?: boolean } = {},
   ) {
     const initial = await this.locate(userId, id);
-    return this.access.mutate(
+    const recipients = new Set<string>();
+    const result = await this.access.mutate(
       userId,
       initial.board.id,
       'read',
@@ -82,10 +85,44 @@ export class TasksService {
         if (row.archivedAt && !options.allowArchived)
           throw new ConflictException('Restore this task before editing it');
         await tx.task.update({ where: { id }, data: { version: { increment: 1 } } });
-        return run(tx, { row, board, view });
+        const result = await run(tx, { row, board, view });
+        const current = await tx.task.findUnique({
+          where: { id },
+          select: { title: true, assignees: { select: { userId: true } } },
+        });
+        if (current) {
+          const oldIds = row.assignees.map((user) => user.userId);
+          const newIds = current.assignees
+            .map((user) => user.userId)
+            .filter((id) => !oldIds.includes(id));
+          for (const recipient of await this.notifications.record(
+            tx,
+            userId,
+            id,
+            newIds,
+            'TASK_ASSIGNED',
+            current.title,
+          ))
+            recipients.add(recipient);
+          const existing = [...oldIds, ...(row.createdById ? [row.createdById] : [])].filter(
+            (id) => !newIds.includes(id),
+          );
+          for (const recipient of await this.notifications.record(
+            tx,
+            userId,
+            id,
+            existing,
+            'TASK_UPDATED',
+            current.title,
+          ))
+            recipients.add(recipient);
+        }
+        return result;
       },
       { expectedRevision: options.expectedRevision },
     );
+    await this.notifications.afterCommit([...recipients]);
+    return result;
   }
   private async validateLinks(
     tx: Prisma.TransactionClient,
@@ -118,7 +155,7 @@ export class TasksService {
   }
   async create(userId: string, input: TaskInput) {
     const column = await this.access.column(userId, input.columnId);
-    return this.access.mutate(userId, column.boardId, 'read', async (tx, actor) => {
+    const result = await this.access.mutate(userId, column.boardId, 'read', async (tx, actor) => {
       if (!(await tx.column.findFirst({ where: { id: input.columnId, boardId: actor.board.id } })))
         throw new NotFoundException('Column not found');
       await this.validateLinks(tx, actor, input.assigneeIds, input.labelIds);
@@ -140,8 +177,11 @@ export class TasksService {
         },
         include: taskInclude,
       });
+      await this.notifications.record(tx, userId, row.id, assigneeIds, 'TASK_ASSIGNED', row.title);
       return taskView(row, userId, actor.canManage);
     });
+    await this.notifications.afterCommit(input.assigneeIds.filter((id) => id !== userId));
+    return result;
   }
   async get(userId: string, id: string) {
     const initial = await this.locate(userId, id);
