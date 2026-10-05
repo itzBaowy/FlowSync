@@ -56,6 +56,12 @@ export const invitationSchema = z.object({
   expiresAt: z.string().datetime(),
   createdAt: z.string().datetime(),
 });
+export const invitationPreviewSchema = z.object({
+  organizationName: z.string(),
+  email: emailSchema,
+  role: z.enum(['ADMIN', 'MEMBER']),
+  expiresAt: z.string().datetime(),
+});
 export const listQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).max(100000).default(1),

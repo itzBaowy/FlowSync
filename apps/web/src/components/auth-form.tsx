@@ -8,12 +8,14 @@ import {
   type RegisterInput,
   type LoginInput,
 } from '@flowsync/contracts';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api, setAccessToken } from '@/lib/api';
+import { authDestination } from '@/lib/navigation';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Logo } from './logo';
@@ -22,6 +24,8 @@ import { ThemeToggle } from './theme-toggle';
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const registering = mode === 'register';
   const router = useRouter();
+  const client = useQueryClient();
+  const destination = authDestination(useSearchParams().get('next'));
   const [error, setError] = useState<string | null>(null);
   const form = useForm<LoginInput | RegisterInput>({
     resolver: zodResolver(registering ? registerSchema : loginSchema),
@@ -36,8 +40,9 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         await api<unknown>(`/auth/${mode}`, { method: 'POST', body: JSON.stringify(values) }),
       );
       setAccessToken(session.accessToken);
+      client.setQueryData(['session'], session);
       toast.success(registering ? 'Your account is ready' : 'Welcome back');
-      router.replace('/dashboard');
+      router.replace(destination);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Something went wrong. Please try again.');
     }
@@ -180,7 +185,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
             {registering ? 'Already part of the team?' : 'New to FlowSync?'}{' '}
             <Link
               className="font-medium text-primary hover:underline"
-              href={registering ? '/login' : '/register'}
+              href={`${registering ? '/login' : '/register'}${destination.startsWith('/invite?') ? `?next=${encodeURIComponent(destination)}` : ''}`}
             >
               {registering ? 'Sign in' : 'Create an account'}
             </Link>
