@@ -15,6 +15,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { KanbanModule } from './modules/kanban/kanban.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { KanbanModule } from './modules/kanban/kanban.module';
     WorkspacesModule,
     ProjectsModule,
     KanbanModule,
+    RealtimeModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },

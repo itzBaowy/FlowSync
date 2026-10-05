@@ -25,10 +25,13 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/platform-socket.io": "^11.2.7",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.4.0",
+    "@nestjs/websockets": "^11.2.7",
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
+    "@socket.io/redis-adapter": "^8.3.0",
     "argon2": "^0.44.0",
     "bullmq": "^5.81.5",
     "cookie-parser": "^1.4.7",
@@ -42,6 +45,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "sharp": "^0.35.5",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {

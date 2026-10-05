@@ -5,7 +5,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Environment } from '../../config/environment';
 
-const accessClaims = z.object({ sub: z.string().uuid(), type: z.literal('access') });
+const accessClaims = z.object({
+  sub: z.string().uuid(),
+  type: z.literal('access'),
+  exp: z.number().int().positive(),
+});
 const refreshClaims = z.object({
   sub: z.string().uuid(),
   sid: z.string().uuid(),
