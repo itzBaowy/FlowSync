@@ -135,7 +135,7 @@ test('workspace and project membership gates, ownership transfer and access revo
         members: { create: { userId: owner.id } },
       },
     });
-    const project = await prisma.project.create({
+    await prisma.project.create({
       data: {
         workspaceId: workspace.id,
         name: 'Private Release',
