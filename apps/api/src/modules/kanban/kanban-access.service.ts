@@ -29,7 +29,10 @@ export class KanbanAccessService {
   async column(userId: string, id: string) {
     const column = await this.prisma.column.findUnique({ where: { id } });
     if (!column) throw new NotFoundException('Column not found');
-    await this.board(userId, column.boardId, 'read');
+    await this.board(userId, column.boardId, 'read').catch((error: unknown) => {
+      if (error instanceof NotFoundException) throw new NotFoundException('Column not found');
+      throw error;
+    });
     return column;
   }
   async mutate<T>(

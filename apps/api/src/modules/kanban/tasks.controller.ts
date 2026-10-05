@@ -25,6 +25,7 @@ import {
 } from '@flowsync/contracts';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../../common/zod.pipe';
+import { ApiZodBody } from '../../common/api-zod-body';
 import { AccessGuard, type AuthenticatedRequest } from '../auth/access.guard';
 import { TasksService } from './tasks.service';
 const uuid = new ZodValidationPipe(z.string().uuid());
@@ -35,6 +36,7 @@ const uuid = new ZodValidationPipe(z.string().uuid());
 export class TasksController {
   constructor(private readonly tasks: TasksService) {}
   @Post()
+  @ApiZodBody(taskInputSchema)
   create(
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(taskInputSchema)) body: TaskInput,
@@ -53,6 +55,7 @@ export class TasksController {
     return this.tasks.get(req.userId, id);
   }
   @Patch(':id')
+  @ApiZodBody(taskUpdateSchema)
   update(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -61,6 +64,7 @@ export class TasksController {
     return this.tasks.update(req.userId, id, body);
   }
   @Patch(':id/move')
+  @ApiZodBody(taskMoveSchema)
   move(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -69,6 +73,7 @@ export class TasksController {
     return this.tasks.move(req.userId, id, body);
   }
   @Patch(':id/archive')
+  @ApiZodBody(taskArchiveSchema)
   archive(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -77,6 +82,7 @@ export class TasksController {
     return this.tasks.archive(req.userId, id, body.archived, body.expectedVersion);
   }
   @Delete(':id')
+  @ApiZodBody(taskVersionSchema)
   remove(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,

@@ -22,6 +22,7 @@ import {
 } from '@flowsync/contracts';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../../common/zod.pipe';
+import { ApiZodBody } from '../../common/api-zod-body';
 import { AccessGuard, type AuthenticatedRequest } from '../auth/access.guard';
 import { BoardsService } from './boards.service';
 const uuid = new ZodValidationPipe(z.string().uuid());
@@ -32,6 +33,7 @@ const uuid = new ZodValidationPipe(z.string().uuid());
 export class BoardsController {
   constructor(private readonly boards: BoardsService) {}
   @Post()
+  @ApiZodBody(boardInputSchema)
   create(
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(boardInputSchema)) body: BoardInput,
@@ -50,6 +52,7 @@ export class BoardsController {
     return this.boards.snapshot(req.userId, id);
   }
   @Patch(':id')
+  @ApiZodBody(boardUpdateSchema)
   update(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -62,6 +65,7 @@ export class BoardsController {
     return this.boards.remove(req.userId, id);
   }
   @Post(':id/columns')
+  @ApiZodBody(columnInputSchema)
   addColumn(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -70,6 +74,7 @@ export class BoardsController {
     return this.boards.addColumn(req.userId, id, body);
   }
   @Patch(':id/columns/order')
+  @ApiZodBody(reorderColumnsSchema)
   reorder(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,
@@ -78,6 +83,7 @@ export class BoardsController {
     return this.boards.reorderColumns(req.userId, id, body);
   }
   @Patch(':id/columns/:columnId')
+  @ApiZodBody(columnUpdateSchema)
   updateColumn(
     @Req() req: AuthenticatedRequest,
     @Param('id', uuid) id: string,

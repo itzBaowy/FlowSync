@@ -96,6 +96,22 @@ describe.sequential('Kanban board boundaries and atomic ordering', () => {
     ).json();
     expect(list.meta.total).toBe(1);
     expect((await request('/boards?projectId=invalid')).status).toBe(400);
+    const foreignColumn = await request('/tasks', 3, 'POST', {
+      columnId: columns[0]!.id,
+      title: 'No',
+    });
+    const missingColumn = await request('/tasks', 3, 'POST', {
+      columnId: randomUUID(),
+      title: 'No',
+    });
+    expect((await foreignColumn.json()).message).toBe((await missingColumn.json()).message);
+    const docs = await (await fetch(`${api.baseUrl}/docs-json`)).json();
+    const move =
+      docs.paths['/api/tasks/{id}/move'].patch.requestBody.content['application/json'].schema;
+    expect(move.required).toEqual(
+      expect.arrayContaining(['columnId', 'expectedVersion', 'expectedRevision']),
+    );
+    expect(move.additionalProperties).toBe(false);
   });
   it('adds, edits and removes scoped columns without resetting their kind', async () => {
     expect(
