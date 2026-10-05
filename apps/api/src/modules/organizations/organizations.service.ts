@@ -1,10 +1,11 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { ListQuery, OrganizationInput, OrganizationUpdate } from '@flowsync/contracts';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma, type Organization } from '../../generated/prisma/client';
 import { PermissionService } from '../authorization/permission.service';
 import type { OrganizationRole } from '@flowsync/contracts';
 import { PaginatedResult } from '../../common/pagination';
+import { OBJECT_STORAGE, type ObjectStorage } from '../files/storage.module';
 
 export const organizationView = (organization: Organization, role: OrganizationRole) => ({
   id: organization.id,
@@ -22,13 +23,14 @@ export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
   async create(userId: string, input: OrganizationInput) {
     try {
       const organization = await this.prisma.organization.create({
         data: { ...input, ownerId: userId, members: { create: { userId, role: 'OWNER' } } },
       });
-      return organizationView(organization, 'OWNER');
+      return this.present(organization, 'OWNER');
     } catch (error) {
       this.conflict(error);
     }
@@ -52,7 +54,7 @@ export class OrganizationsService {
       { isolationLevel: 'RepeatableRead' },
     );
     return new PaginatedResult(
-      rows.map((row) => organizationView(row, row.members[0]!.role)),
+      await Promise.all(rows.map((row) => this.present(row, row.members[0]!.role))),
       query.page,
       query.limit,
       total,
@@ -60,7 +62,7 @@ export class OrganizationsService {
   }
   async get(userId: string, id: string) {
     const member = await this.permissions.requireOrganization(userId, id, 'read');
-    return organizationView(member.organization, member.role);
+    return this.present(member.organization, member.role);
   }
   async update(userId: string, id: string, input: OrganizationUpdate) {
     try {
@@ -68,7 +70,7 @@ export class OrganizationsService {
         await this.permissions.lockOrganization(tx, id);
         const member = await this.permissions.requireOrganization(userId, id, 'update', tx);
         const organization = await tx.organization.update({ where: { id }, data: input });
-        return organizationView(organization, member.role);
+        return this.present(organization, member.role);
       });
     } catch (error) {
       this.conflict(error);
@@ -76,9 +78,9 @@ export class OrganizationsService {
   }
   async remove(userId: string, id: string) {
     try {
-      await this.prisma.$transaction(async (tx) => {
+      const logoKey = await this.prisma.$transaction(async (tx) => {
         await this.permissions.lockOrganization(tx, id);
-        await this.permissions.requireOrganization(userId, id, 'delete', tx);
+        const actor = await this.permissions.requireOrganization(userId, id, 'delete', tx);
         const workspaces = await tx.workspace.count({ where: { organizationId: id } });
         const activities = await tx.activity.count({ where: { organizationId: id } });
         if (workspaces || activities)
@@ -86,7 +88,9 @@ export class OrganizationsService {
             'Remove workspaces and handle retained activity before deleting this organization',
           );
         await tx.organization.delete({ where: { id } });
+        return actor.organization.logoKey;
       });
+      if (logoKey) await this.storage.discard(logoKey);
       return { success: true };
     } catch (error) {
       this.conflict(error);
@@ -100,5 +104,11 @@ export class OrganizationsService {
         throw new ConflictException('Organization still has related resources');
     }
     throw error;
+  }
+  private async present(organization: Organization, role: OrganizationRole) {
+    return {
+      ...organizationView(organization, role),
+      logoUrl: organization.logoKey ? await this.storage.signedUrl(organization.logoKey) : null,
+    };
   }
 }

@@ -46,6 +46,7 @@ export class HttpErrorFilter implements ExceptionFilter {
       404: 'NOT_FOUND',
       409: 'CONFLICT',
       410: 'INVITATION_EXPIRED',
+      413: 'PAYLOAD_TOO_LARGE',
       429: 'RATE_LIMITED',
       503: 'SERVICE_UNAVAILABLE',
     };

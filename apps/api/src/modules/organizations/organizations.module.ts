@@ -7,15 +7,19 @@ import { MembersService } from './members.service';
 import { MembersController } from './members.controller';
 import { InvitationsService } from './invitations.service';
 import { InvitationsController, OrganizationInvitationsController } from './invitations.controller';
+import { StorageModule } from '../files/storage.module';
+import { LogoController } from './logo.controller';
+import { LogoService } from './logo.service';
 @Module({
-  imports: [AuthModule, AuthorizationModule],
+  imports: [AuthModule, AuthorizationModule, StorageModule],
   controllers: [
     OrganizationsController,
     MembersController,
     InvitationsController,
     OrganizationInvitationsController,
+    LogoController,
   ],
-  providers: [OrganizationsService, MembersService, InvitationsService],
+  providers: [OrganizationsService, MembersService, InvitationsService, LogoService],
   exports: [OrganizationsService],
 })
 export class OrganizationsModule {}

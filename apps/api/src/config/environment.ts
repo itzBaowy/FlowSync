@@ -21,6 +21,7 @@ export const environmentSchema = z
     JWT_ISSUER: z.string().min(1).default('flowsync-api'),
     JWT_AUDIENCE: z.string().min(1).default('flowsync-web'),
     MINIO_ENDPOINT: z.url(),
+    MINIO_PUBLIC_ENDPOINT: z.url().optional(),
     MINIO_ACCESS_KEY: z.string().min(1),
     MINIO_SECRET_KEY: z
       .string()

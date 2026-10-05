@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { organizationSchema } from '@flowsync/contracts';
 import { startTestApi } from './helpers/api-server';
+import sharp from 'sharp';
 
 config({ path: '../../.env', quiet: true });
 const prisma = new PrismaClient({
@@ -101,6 +102,47 @@ describe.sequential('Organization CRUD and tenant boundaries', () => {
     expect((await request(`/organizations/${organizationId}`, 1, 'DELETE')).status).toBe(403);
     expect((await request(`/organizations/${organizationId}`, 0, 'DELETE')).status).toBe(200);
     expect((await request(`/organizations/${organizationId}`)).status).toBe(404);
+  });
+  it('validates logo contents and serves normalized images only through a private signed URL', async () => {
+    const created = await request('/organizations', 0, 'POST', {
+      name: 'Logo team',
+      slug: `test-${suffix}-logo`,
+    });
+    const logoOrg = (await created.json()).data.id as string;
+    const upload = async (bytes: Buffer, mime: string, actor = 0) => {
+      const form = new FormData();
+      form.append('file', new Blob([new Uint8Array(bytes)], { type: mime }), 'logo');
+      return fetch(`${api.baseUrl}/organizations/${logoOrg}/logo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accounts[actor]!.token}` },
+        body: form,
+      });
+    };
+    const png = await sharp({
+      create: { width: 16, height: 16, channels: 4, background: '#6155d9' },
+    })
+      .png()
+      .toBuffer();
+    expect((await upload(png, 'image/png', 2)).status).toBe(404);
+    expect(
+      (await upload(Buffer.from('<svg><script>alert(1)</script></svg>'), 'image/png')).status,
+    ).toBe(400);
+    expect((await upload(png, 'image/jpeg')).status).toBe(400);
+    expect((await upload(Buffer.alloc(2 * 1024 * 1024 + 1), 'image/png')).status).toBe(413);
+    const response = await upload(png, 'image/png');
+    expect(response.status).toBe(201);
+    const imageUrl = (await response.json()).data.logoUrl as string;
+    expect(imageUrl).toContain('X-Amz-Signature');
+    const image = await fetch(imageUrl);
+    expect(image.status).toBe(200);
+    expect(image.headers.get('content-type')).toBe('image/png');
+    const unsigned = new URL(imageUrl);
+    unsigned.search = '';
+    expect((await fetch(unsigned)).status).toBe(403);
+    const detail = await request(`/organizations/${logoOrg}`);
+    expect((await detail.json()).data.logoUrl).toContain('X-Amz-Signature');
+    expect((await request(`/organizations/${logoOrg}`, 0, 'DELETE')).status).toBe(200);
+    expect((await fetch(imageUrl)).status).toBe(404);
   });
   it('lists public member profiles and lets only owner manage roles', async () => {
     const created = await request('/organizations', 0, 'POST', {

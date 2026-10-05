@@ -5,7 +5,14 @@ import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
 const envFile = new URL('.env', root);
 if (existsSync(envFile)) {
-  const current = readFileSync(envFile, 'utf8');
+  let current = readFileSync(envFile, 'utf8');
+  if (!/^MINIO_PUBLIC_ENDPOINT=/m.test(current)) {
+    const endpoint = current.match(/^MINIO_ENDPOINT=(.+)$/m)?.[1]?.trim();
+    if (endpoint) {
+      current = `${current.trimEnd()}\nMINIO_PUBLIC_ENDPOINT=${endpoint}\n`;
+      writeFileSync(envFile, current);
+    }
+  }
   if (!/^EMAIL_ENCRYPTION_KEY=/m.test(current)) {
     writeFileSync(
       envFile,
