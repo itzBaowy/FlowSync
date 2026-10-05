@@ -11,9 +11,11 @@ import { TaskExtrasService } from './task-extras.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityModule } from '../activity/activity.module';
+import { CommentsController } from '../collaboration/comments.controller';
+import { CommentsService } from '../collaboration/comments.service';
 @Module({
   imports: [AuthModule, AuthorizationModule, RealtimeModule, NotificationsModule, ActivityModule],
-  controllers: [BoardsController, TasksController, TaskExtrasController],
-  providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService],
+  controllers: [BoardsController, TasksController, TaskExtrasController, CommentsController],
+  providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService, CommentsService],
 })
 export class KanbanModule {}

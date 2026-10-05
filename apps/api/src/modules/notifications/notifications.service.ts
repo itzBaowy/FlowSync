@@ -127,17 +127,62 @@ export class NotificationsService {
     type: NotificationType,
     title: string,
   ) {
-    const recipients = [...new Set(userIds)].filter((id) => id !== actorId);
+    const candidates = [...new Set(userIds)].filter((id) => id !== actorId);
+    if (!candidates.length) return [];
+    const task = await tx.task.findUniqueOrThrow({
+      where: { id: taskId },
+      select: {
+        column: {
+          select: {
+            board: {
+              select: {
+                projectId: true,
+                project: {
+                  select: { workspaceId: true, workspace: { select: { organizationId: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const project = task.column.board.project;
+    const members = await tx.user.findMany({
+      where: {
+        id: { in: candidates },
+        organizations: { some: { organizationId: project.workspace.organizationId } },
+        OR: [
+          {
+            organizations: {
+              some: {
+                organizationId: project.workspace.organizationId,
+                role: { in: ['OWNER', 'ADMIN'] },
+              },
+            },
+          },
+          {
+            workspaces: { some: { workspaceId: project.workspaceId } },
+            projects: { some: { projectId: task.column.board.projectId } },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    const recipients = members.map((member) => member.id);
     if (!recipients.length) return recipients;
     const actor = await tx.user.findUniqueOrThrow({
       where: { id: actorId },
       select: { name: true },
     });
-    const message = [
-      ...`${actor.name} ${type === 'TASK_ASSIGNED' ? 'assigned you to' : 'updated'} "${title}"`,
-    ]
-      .slice(0, 240)
-      .join('');
+    const verb =
+      type === 'TASK_ASSIGNED'
+        ? 'assigned you to'
+        : type === 'MENTION'
+          ? 'mentioned you in'
+          : type === 'TASK_COMMENT'
+            ? 'commented on'
+            : 'updated';
+    const message = [...`${actor.name} ${verb} "${title}"`].slice(0, 240).join('');
     await tx.notification.createMany({
       data: recipients.map((userId) => ({ userId, taskId, type, title: message })),
     });

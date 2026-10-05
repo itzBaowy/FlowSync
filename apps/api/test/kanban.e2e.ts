@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import {
   activitySchema,
+  commentSchema,
   boardSnapshotSchema,
   taskDetailSchema,
   taskSchema,
@@ -65,6 +66,135 @@ beforeAll(async () => {
     await request(`/workspaces/${workspaceId}/members`, 0, 'POST', { userId: users[actor]!.id });
     await request(`/projects/${projectId}/members`, 0, 'POST', { userId: users[actor]!.id });
   }
+});
+describe.sequential('Comments and private mentions', () => {
+  let taskId: string;
+  let commentId: string;
+  it('lets an unassigned project member comment and deduplicates scoped mentions', async () => {
+    const board = await prisma.board.create({
+      data: {
+        projectId,
+        name: 'Conversation',
+        columns: { create: { name: 'To do', position: 0 } },
+      },
+      include: { columns: true },
+    });
+    const response = await request('/tasks', 0, 'POST', {
+      columnId: board.columns[0]!.id,
+      title: 'Discuss delivery',
+      assigneeIds: [users[1]!.id],
+    });
+    taskId = (await response.json()).data.id;
+    const result = await request(`/tasks/${taskId}/comments`, 2, 'POST', {
+      text: `@[Member](${users[1]!.id}) @Member please review`,
+    });
+    expect(result.status).toBe(201);
+    const row = commentSchema.parse((await result.json()).data);
+    commentId = row.id;
+    expect(row).toMatchObject({
+      version: 0,
+      author: { name: 'Colleague' },
+      canEdit: true,
+      canDelete: true,
+    });
+    expect(row.mentions).toHaveLength(1);
+    expect(
+      await prisma.notification.count({ where: { taskId, userId: users[1]!.id, type: 'MENTION' } }),
+    ).toBe(1);
+    expect(
+      await prisma.notification.count({
+        where: { taskId, userId: users[1]!.id, type: 'TASK_COMMENT' },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.notification.count({
+        where: { taskId, userId: users[0]!.id, type: 'TASK_COMMENT' },
+      }),
+    ).toBe(1);
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).version).toBe(0);
+    const listing = await (
+      await request(`/tasks/${taskId}/comments?search=review&limit=1`, 1)
+    ).json();
+    expect(listing.meta.total).toBe(1);
+    expect(listing.data[0]).toMatchObject({ canEdit: false, canDelete: false });
+    expect((await request(`/tasks/${taskId}/comments`, 3)).status).toBe(404);
+  });
+  it('rejects foreign mentions and forged author IDs without side effects', async () => {
+    const before = await prisma.activity.count({ where: { taskId } });
+    expect(
+      (
+        await request(`/tasks/${taskId}/comments`, 2, 'POST', {
+          text: `@[Outsider](${users[3]!.id}) private`,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(`/tasks/${taskId}/comments`, 2, 'POST', {
+          text: 'Hi',
+          authorId: users[0]!.id,
+        })
+      ).status,
+    ).toBe(400);
+    expect((await request(`/tasks/${taskId}/comments`, 3, 'POST', { text: 'Hi' })).status).toBe(
+      404,
+    );
+    expect(await prisma.comment.count({ where: { taskId } })).toBe(1);
+    expect(await prisma.activity.count({ where: { taskId } })).toBe(before);
+  });
+  it('serializes author edits and does not notify unchanged mentions twice', async () => {
+    const path = `/tasks/${taskId}/comments/${commentId}`;
+    expect(
+      (await request(path, 0, 'PATCH', { text: 'Manager editing', expectedVersion: 0 })).status,
+    ).toBe(403);
+    const edits = await Promise.all([
+      request(path, 2, 'PATCH', { text: '@Member updated one', expectedVersion: 0 }),
+      request(path, 2, 'PATCH', { text: '@Member updated two', expectedVersion: 0 }),
+    ]);
+    expect(edits.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect((await prisma.comment.findUniqueOrThrow({ where: { id: commentId } })).version).toBe(1);
+    expect(
+      await prisma.notification.count({ where: { taskId, userId: users[1]!.id, type: 'MENTION' } }),
+    ).toBe(1);
+    expect(
+      (await request(path, 2, 'PATCH', { text: '@Owner new mention', expectedVersion: 1 })).status,
+    ).toBe(200);
+    expect(
+      await prisma.notification.count({ where: { taskId, userId: users[0]!.id, type: 'MENTION' } }),
+    ).toBe(1);
+  });
+  it('checks child IDs, permits moderation and blocks comments on archived tasks', async () => {
+    const task = await prisma.task.findUniqueOrThrow({ where: { id: taskId } });
+    const other = await prisma.task.create({
+      data: { columnId: task.columnId, title: 'Other discussion', position: 9999 },
+    });
+    expect(
+      (
+        await request(`/tasks/${other.id}/comments/${commentId}`, 0, 'DELETE', {
+          expectedVersion: 2,
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (await request(`/tasks/${taskId}/comments/${commentId}`, 1, 'DELETE', { expectedVersion: 2 }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await request(`/tasks/${taskId}/comments/${commentId}`, 0, 'DELETE', { expectedVersion: 1 }))
+        .status,
+    ).toBe(409);
+    expect(
+      (await request(`/tasks/${taskId}/comments/${commentId}`, 0, 'DELETE', { expectedVersion: 2 }))
+        .status,
+    ).toBe(200);
+    expect(await prisma.mention.count({ where: { commentId } })).toBe(0);
+    expect(await prisma.activity.count({ where: { taskId, action: 'COMMENT_DELETED' } })).toBe(1);
+    await prisma.task.update({ where: { id: taskId }, data: { archivedAt: new Date() } });
+    expect(
+      (await request(`/tasks/${taskId}/comments`, 2, 'POST', { text: 'Archived' })).status,
+    ).toBe(409);
+    expect((await request(`/tasks/${taskId}/comments`, 1)).status).toBe(200);
+  });
 });
 describe.sequential('Transactional project and task activity', () => {
   let taskId: string;
