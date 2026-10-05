@@ -71,7 +71,7 @@ export function TaskForm({
       setError(errorMessage(cause));
     }
   }
-  const prefix = task?.id ?? 'new';
+  const prefix = `task-${task?.id ?? 'new'}`;
   return (
     <form onSubmit={submit} className="space-y-4">
       <Notice error={error ?? members.error ?? labels.error} />
