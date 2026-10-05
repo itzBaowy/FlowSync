@@ -380,3 +380,108 @@ describe.sequential('Task permissions, optimistic concurrency and ranking', () =
     expect((await request(`/tasks/${taskId}`, 1)).status).toBe(404);
   });
 });
+describe.sequential('Project labels and versioned task checklists', () => {
+  it('scopes label management and assigns multiple labels atomically', async () => {
+    const path = `/projects/${projectId}/labels`;
+    expect((await request(path, 1, 'POST', { name: 'Bug', color: '#AABBCC' })).status).toBe(403);
+    expect((await request(path, 3)).status).toBe(404);
+    expect((await request(path, 0, 'POST', { name: 'Bad', color: 'red' })).status).toBe(400);
+    const label = (await (await request(path, 0, 'POST', { name: 'Bug', color: '#AABBCC' })).json())
+      .data;
+    expect(label.color).toBe('#aabbcc');
+    expect((await request(path, 0, 'POST', { name: 'Bug', color: '#112233' })).status).toBe(409);
+    const task = (
+      await (
+        await request('/tasks', 1, 'POST', {
+          columnId: columns[0]!.id,
+          title: 'Checklist task',
+          assigneeIds: [users[1]!.id, users[2]!.id],
+          labelIds: [label.id],
+        })
+      ).json()
+    ).data;
+    taskId = task.id;
+    expect(task.labels[0].name).toBe('Bug');
+    expect(
+      (await request(`${path}/${label.id}`, 0, 'PATCH', { name: 'Issue', color: '#123456' }))
+        .status,
+    ).toBe(200);
+    expect((await currentTask()).labels[0]!.name).toBe('Issue');
+    expect((await request(`${path}/${label.id}`, 0, 'DELETE')).status).toBe(200);
+    expect((await currentTask()).labels).toHaveLength(0);
+    expect((await request(`${path}/${label.id}`, 0, 'DELETE')).status).toBe(404);
+  });
+  it('increments task versions for checklist changes and rejects foreign child IDs', async () => {
+    const path = `/tasks/${taskId}/checklists`;
+    expect((await request(path, 3, 'POST', { title: 'Ship', expectedVersion: 0 })).status).toBe(
+      404,
+    );
+    const added = await request(path, 1, 'POST', { title: 'Ship', expectedVersion: 0 });
+    expect(added.status).toBe(201);
+    const task = taskDetailSchema.parse((await added.json()).data);
+    const checklist = task.checklists[0]!;
+    expect(task.version).toBe(1);
+    expect(
+      (
+        await request(`${path}/${checklist.id}/items`, 2, 'POST', {
+          text: 'Review',
+          expectedVersion: 0,
+        })
+      ).status,
+    ).toBe(409);
+    const itemResponse = await request(`${path}/${checklist.id}/items`, 2, 'POST', {
+      text: 'Review',
+      expectedVersion: 1,
+    });
+    expect(itemResponse.status).toBe(201);
+    const saved = taskDetailSchema.parse((await itemResponse.json()).data);
+    const item = saved.checklists[0]!.items[0]!;
+    const foreign = await prisma.task.create({
+      data: {
+        columnId: columns[0]!.id,
+        title: 'Foreign child',
+        position: 2048,
+        checklists: {
+          create: {
+            title: 'Other',
+            position: 0,
+            items: { create: { text: 'Other', position: 0 } },
+          },
+        },
+      },
+      include: { checklists: { include: { items: true } } },
+    });
+    expect(
+      (
+        await request(
+          `/tasks/${taskId}/checklist-items/${foreign.checklists[0]!.items[0]!.id}`,
+          1,
+          'PATCH',
+          { completed: true, expectedVersion: 2 },
+        )
+      ).status,
+    ).toBe(404);
+    expect((await currentTask()).version).toBe(2);
+    expect(
+      (
+        await request(`/tasks/${taskId}/checklist-items/${item.id}`, 2, 'PATCH', {
+          completed: true,
+          expectedVersion: 2,
+        })
+      ).status,
+    ).toBe(200);
+    expect((await currentTask()).checklists[0]!.items[0]!.completed).toBe(true);
+    expect(
+      (
+        await request(`/tasks/${taskId}/checklist-items/${item.id}`, 1, 'DELETE', {
+          expectedVersion: 3,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await request(`${path}/${checklist.id}`, 1, 'DELETE', { expectedVersion: 4 })).status,
+    ).toBe(200);
+    expect((await currentTask()).checklists).toHaveLength(0);
+    await prisma.task.delete({ where: { id: foreign.id } });
+  });
+});

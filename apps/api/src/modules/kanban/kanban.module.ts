@@ -6,9 +6,11 @@ import { BoardsService } from './boards.service';
 import { KanbanAccessService } from './kanban-access.service';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
+import { TaskExtrasController } from './task-extras.controller';
+import { TaskExtrasService } from './task-extras.service';
 @Module({
   imports: [AuthModule, AuthorizationModule],
-  controllers: [BoardsController, TasksController],
-  providers: [BoardsService, KanbanAccessService, TasksService],
+  controllers: [BoardsController, TasksController, TaskExtrasController],
+  providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService],
 })
 export class KanbanModule {}
