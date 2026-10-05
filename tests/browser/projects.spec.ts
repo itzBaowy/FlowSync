@@ -92,3 +92,136 @@ test('workspace and project CRUD, date validation, overview and responsive layou
     await prisma.$disconnect();
   }
 });
+
+test('workspace and project membership gates, ownership transfer and access revocation', async ({
+  page,
+  browser,
+}) => {
+  const suffix = randomUUID();
+  const emails = [`scope-owner-${suffix}@example.com`, `scope-member-${suffix}@example.com`];
+  const password = 'browser-membership-scope-password';
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  });
+  const context = await browser.newContext();
+  let orgId: string | undefined;
+  try {
+    const passwordHash = await hash(password);
+    const owner = await prisma.user.create({
+      data: { name: 'Owner', email: emails[0]!, passwordHash },
+    });
+    const member = await prisma.user.create({
+      data: { name: 'Member', email: emails[1]!, passwordHash },
+    });
+    const org = await prisma.organization.create({
+      data: {
+        name: 'Scoped Team',
+        slug: `scope-members-${suffix}`,
+        ownerId: owner.id,
+        members: {
+          create: [
+            { userId: owner.id, role: 'OWNER' },
+            { userId: member.id, role: 'MEMBER' },
+          ],
+        },
+      },
+    });
+    orgId = org.id;
+    const workspace = await prisma.workspace.create({
+      data: {
+        organizationId: org.id,
+        name: 'Private Studio',
+        slug: 'private',
+        members: { create: { userId: owner.id } },
+      },
+    });
+    const project = await prisma.project.create({
+      data: {
+        workspaceId: workspace.id,
+        name: 'Private Release',
+        ownerId: owner.id,
+        members: { create: { userId: owner.id } },
+      },
+    });
+    await page.goto('/login');
+    await page.getByLabel('Work email').fill(emails[0]!);
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page).toHaveURL('/dashboard');
+    await page.goto(`/workspaces?organizationId=${org.id}&id=${workspace.id}`);
+    await page.getByLabel('Find eligible people').fill(emails[1]!);
+    await page
+      .getByRole('article', { name: `Eligible person ${emails[1]}`, exact: true })
+      .getByRole('button', { name: 'Add to space' })
+      .click();
+    await expect(
+      page.getByRole('article', { name: `Space member ${emails[1]}`, exact: true }),
+    ).toBeVisible();
+    const memberPage = await context.newPage();
+    await memberPage.goto(`${process.env.WEB_URL}/login`);
+    await memberPage.getByLabel('Work email').fill(emails[1]!);
+    await memberPage.getByLabel('Password').fill(password);
+    await memberPage.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(memberPage).toHaveURL(/\/dashboard$/);
+    await memberPage.goto(
+      `${process.env.WEB_URL}/workspaces?organizationId=${org.id}&id=${workspace.id}`,
+    );
+    await expect(memberPage.getByLabel('Workspace name')).toBeDisabled();
+    await memberPage.getByRole('link', { name: 'Open projects' }).click();
+    await expect(memberPage.getByText('No projects found.', { exact: false })).toBeVisible();
+    await page.getByRole('link', { name: 'Open projects' }).click();
+    await page.getByRole('link', { name: 'Private Release', exact: false }).click();
+    await page.getByLabel('Find eligible people').fill(emails[1]!);
+    await page
+      .getByRole('article', { name: `Eligible person ${emails[1]}`, exact: true })
+      .getByRole('button', { name: 'Add to space' })
+      .click();
+    await memberPage.reload();
+    await memberPage.getByRole('link', { name: 'Private Release', exact: false }).click();
+    await expect(memberPage.getByLabel('Project name')).toBeDisabled();
+    await page
+      .getByRole('article', { name: `Space member ${emails[1]}`, exact: true })
+      .getByRole('button', { name: 'Make project owner' })
+      .click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(
+      page
+        .getByRole('article', { name: `Space member ${emails[1]}`, exact: true })
+        .getByText('Owner', { exact: true }),
+    ).toBeVisible();
+    await memberPage.reload();
+    await expect(memberPage.getByLabel('Project name')).toBeEnabled();
+    await expect(
+      memberPage.getByRole('button', { name: 'Create project', exact: true }),
+    ).toHaveCount(0);
+    await memberPage
+      .getByRole('article', { name: `Space member ${emails[0]}`, exact: true })
+      .getByRole('button', { name: 'Make project owner' })
+      .click();
+    await memberPage.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(memberPage.getByLabel('Project name')).toBeDisabled();
+    await page.goto(`/workspaces?organizationId=${org.id}&id=${workspace.id}`);
+    await page
+      .getByRole('article', { name: `Space member ${emails[1]}`, exact: true })
+      .getByRole('button', { name: 'Remove from space' })
+      .click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(
+      page.getByRole('article', { name: `Space member ${emails[1]}`, exact: true }),
+    ).toHaveCount(0);
+    await memberPage.reload();
+    await expect(memberPage.getByRole('main').getByRole('alert').first()).toContainText(
+      'Workspace not found',
+    );
+    await expect(memberPage.getByLabel('Project name')).toHaveCount(0);
+  } finally {
+    await context.close();
+    if (orgId) {
+      await prisma.project.deleteMany({ where: { workspace: { organizationId: orgId } } });
+      await prisma.workspace.deleteMany({ where: { organizationId: orgId } });
+      await prisma.organization.deleteMany({ where: { id: orgId } });
+    }
+    await prisma.user.deleteMany({ where: { email: { in: emails } } });
+    await prisma.$disconnect();
+  }
+});

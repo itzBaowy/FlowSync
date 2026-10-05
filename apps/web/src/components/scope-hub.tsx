@@ -25,6 +25,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ThemeToggle } from './theme-toggle';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
+import { ScopeMembers } from './scope-members';
 type ScopeKind = 'workspaces' | 'projects';
 type Resource = Workspace | Project;
 
@@ -355,6 +356,16 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
                       </div>
                     )}
                   </section>
+                  <ScopeMembers
+                    key={`${kind}-${resource.id}`}
+                    kind={kind}
+                    id={resource.id}
+                    parentId={
+                      'workspaceId' in resource ? resource.workspaceId : resource.organizationId
+                    }
+                    canManage={resource.canManage}
+                    ownerId={'ownerId' in resource ? resource.ownerId : undefined}
+                  />
                   {!isWorkspace && <ProjectOverview id={resource.id} />}
                 </>
               )}
