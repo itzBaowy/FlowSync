@@ -13,9 +13,34 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityModule } from '../activity/activity.module';
 import { CommentsController } from '../collaboration/comments.controller';
 import { CommentsService } from '../collaboration/comments.service';
+import { AttachmentsController } from '../files/attachments.controller';
+import { AttachmentsService } from '../files/attachments.service';
+import { FileCleanupModule } from '../files/file-cleanup.module';
+import { StorageModule } from '../files/storage.module';
 @Module({
-  imports: [AuthModule, AuthorizationModule, RealtimeModule, NotificationsModule, ActivityModule],
-  controllers: [BoardsController, TasksController, TaskExtrasController, CommentsController],
-  providers: [BoardsService, KanbanAccessService, TasksService, TaskExtrasService, CommentsService],
+  imports: [
+    AuthModule,
+    AuthorizationModule,
+    RealtimeModule,
+    NotificationsModule,
+    ActivityModule,
+    StorageModule,
+    FileCleanupModule,
+  ],
+  controllers: [
+    BoardsController,
+    TasksController,
+    TaskExtrasController,
+    CommentsController,
+    AttachmentsController,
+  ],
+  providers: [
+    BoardsService,
+    KanbanAccessService,
+    TasksService,
+    TaskExtrasService,
+    CommentsService,
+    AttachmentsService,
+  ],
 })
 export class KanbanModule {}

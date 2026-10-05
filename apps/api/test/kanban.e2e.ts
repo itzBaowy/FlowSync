@@ -6,6 +6,8 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import {
   activitySchema,
   commentSchema,
+  attachmentSchema,
+  attachmentDownloadSchema,
   boardSnapshotSchema,
   taskDetailSchema,
   taskSchema,
@@ -66,6 +68,108 @@ beforeAll(async () => {
     await request(`/workspaces/${workspaceId}/members`, 0, 'POST', { userId: users[actor]!.id });
     await request(`/projects/${projectId}/members`, 0, 'POST', { userId: users[actor]!.id });
   }
+});
+describe.sequential('Private task attachments and object cleanup', () => {
+  let taskId: string;
+  let attachmentId: string;
+  let objectKey: string;
+  const bytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF');
+  async function upload(actor: number, content = bytes, type = 'application/pdf') {
+    const body = new FormData();
+    body.append('file', new Blob([new Uint8Array(content)], { type }), 'release-notes.pdf');
+    return fetch(`${api.baseUrl}/tasks/${taskId}/attachments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${users[actor]!.token}` },
+      body,
+    });
+  }
+  it('uploads a private object and returns only public attachment metadata', async () => {
+    const board = await prisma.board.create({
+      data: { projectId, name: 'Files', columns: { create: { name: 'To do', position: 0 } } },
+      include: { columns: true },
+    });
+    taskId = (
+      await (
+        await request('/tasks', 0, 'POST', {
+          columnId: board.columns[0]!.id,
+          title: 'File delivery',
+        })
+      ).json()
+    ).data.id;
+    const response = await upload(2);
+    expect(response.status).toBe(201);
+    const { data } = await response.json();
+    const row = attachmentSchema.parse(data);
+    attachmentId = row.id;
+    expect(row).toMatchObject({
+      filename: 'release-notes.pdf',
+      mimeType: 'application/pdf',
+      size: bytes.length,
+      uploadedBy: { name: 'Colleague' },
+      canDelete: true,
+    });
+    expect(data).not.toHaveProperty('objectKey');
+    objectKey = (await prisma.attachment.findUniqueOrThrow({ where: { id: row.id } })).objectKey;
+    expect(await prisma.objectCleanup.count({ where: { objectKey } })).toBe(0);
+    const list = await (
+      await request(`/tasks/${taskId}/attachments?search=release&limit=1`, 1)
+    ).json();
+    expect(list.meta.total).toBe(1);
+    expect(list.data[0].canDelete).toBe(false);
+    expect((await request(`/tasks/${taskId}/attachments`, 3)).status).toBe(404);
+  });
+  it('requires current scope for signed downloads and forces attachment disposition', async () => {
+    const path = `/tasks/${taskId}/attachments/${attachmentId}/download`;
+    expect((await request(path, 3)).status).toBe(404);
+    const download = attachmentDownloadSchema.parse((await (await request(path, 1)).json()).data);
+    expect(download.expiresIn).toBe(300);
+    const content = await fetch(download.url);
+    expect(content.status).toBe(200);
+    expect(Buffer.from(await content.arrayBuffer())).toEqual(bytes);
+    expect(content.headers.get('content-disposition')).toContain('attachment;');
+    expect(content.headers.get('content-type')).toBe('application/octet-stream');
+    const unsigned = new URL(download.url);
+    unsigned.search = '';
+    expect((await fetch(unsigned)).status).toBe(403);
+    const task = await prisma.task.findUniqueOrThrow({ where: { id: taskId } });
+    const other = await prisma.task.create({
+      data: { columnId: task.columnId, title: 'Foreign file child', position: 9999 },
+    });
+    expect((await request(`/tasks/${other.id}/attachments/${attachmentId}/download`)).status).toBe(
+      404,
+    );
+  });
+  it('rejects invalid uploads, compensates failed metadata and removes files durably', async () => {
+    expect((await upload(2, Buffer.from('<html>spoofed</html>'))).status).toBe(400);
+    expect((await upload(2, Buffer.alloc(10 * 1024 * 1024 + 1))).status).toBe(413);
+    expect((await upload(3)).status).toBe(404);
+    await prisma.task.update({ where: { id: taskId }, data: { archivedAt: new Date() } });
+    expect((await upload(2)).status).toBe(409);
+    const compensation = await prisma.objectCleanup.findFirstOrThrow({
+      where: { objectKey: { startsWith: `tasks/${taskId}/attachments/`, not: objectKey } },
+    });
+    expect(compensation.completedAt).not.toBeNull();
+    expect((await request(`/tasks/${taskId}`, 0, 'DELETE', { expectedVersion: 0 })).status).toBe(
+      409,
+    );
+    expect(
+      (await request(`/tasks/${taskId}/attachments/${attachmentId}`, 1, 'DELETE')).status,
+    ).toBe(403);
+    const download = attachmentDownloadSchema.parse(
+      (await (await request(`/tasks/${taskId}/attachments/${attachmentId}/download`)).json()).data,
+    );
+    expect(
+      (await request(`/tasks/${taskId}/attachments/${attachmentId}`, 2, 'DELETE')).status,
+    ).toBe(200);
+    expect(
+      (await prisma.objectCleanup.findUniqueOrThrow({ where: { objectKey } })).completedAt,
+    ).not.toBeNull();
+    expect((await fetch(download.url)).status).toBe(404);
+    expect(await prisma.attachment.count({ where: { taskId } })).toBe(0);
+    await prisma.objectCleanup.deleteMany({
+      where: { objectKey: { startsWith: `tasks/${taskId}/attachments/` } },
+    });
+  });
 });
 describe.sequential('Comments and private mentions', () => {
   let taskId: string;
