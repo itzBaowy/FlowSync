@@ -112,6 +112,7 @@ model Organization {
   name        String   @db.VarChar(120)
   slug        String   @unique @db.VarChar(120)
   logoKey     String?
+  allowAdminInvites Boolean @default(true)
   ownerId     String   @db.Uuid
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

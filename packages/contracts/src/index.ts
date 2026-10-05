@@ -1,6 +1,6 @@
 import { z } from 'zod';
-
-export const emailSchema = z.string().trim().toLowerCase().email().max(254);
+import { emailSchema } from './validation';
+export { emailSchema } from './validation';
 export const loginSchema = z
   .object({
     email: emailSchema,
@@ -40,3 +40,4 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type PublicUser = z.infer<typeof userSchema>;
 export type AuthSession = z.infer<typeof authSessionSchema>;
+export * from './organizations';
