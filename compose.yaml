@@ -1,0 +1,108 @@
+name: flowsync
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Run npm run setup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup}
+      POSTGRES_DB: ${POSTGRES_DB:-flowsync}
+    ports: ['127.0.0.1:${POSTGRES_PORT:-5432}:5432']
+    volumes: ['postgres_data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run npm run setup}
+    command: ['sh', '-c', 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    ports: ['127.0.0.1:${REDIS_PORT:-6379}:6379']
+    volumes: ['redis_data:/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  minio:
+    image: flowsync-minio:local
+    build: { context: ., dockerfile: docker/minio.Dockerfile }
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?Run npm run setup}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Run npm run setup}
+    ports: ['127.0.0.1:${MINIO_API_PORT:-9000}:9000', '127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001']
+    volumes: ['minio_data:/data']
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  minio-init:
+    image: flowsync-minio-init:local
+    build: { context: ., dockerfile: docker/minio.Dockerfile }
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-flowsync}
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - 'mc alias set local http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY" >/dev/null; mc mb --ignore-existing "local/$$MINIO_BUCKET"; mc anonymous set none "local/$$MINIO_BUCKET"'
+  migrate:
+    build: { context: ., target: migrator }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres: { condition: service_healthy }
+  api:
+    build: { context: ., target: api }
+    env_file: .env
+    environment:
+      # Compiled containers with local HTTP cookies; production deployment must set production + HTTPS.
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_PORT: 4000
+      MINIO_ENDPOINT: http://minio:9000
+      # Local Compose uses HTTP; secure cookies need HTTPS in a production deployment.
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
+    ports: ['127.0.0.1:${API_PORT:-4000}:4000']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 8s
+      retries: 10
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+    environment: { NODE_ENV: production, HOSTNAME: '0.0.0.0', PORT: '3000' }
+    ports: ['127.0.0.1:${WEB_PORT:-3000}:3000']
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
