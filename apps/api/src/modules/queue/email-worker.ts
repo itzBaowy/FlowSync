@@ -66,7 +66,8 @@ export async function startEmailWorker(env: Environment) {
       });
       if (
         !sender ||
-        !canAccessOrganization(sender.role, 'invite', invite.organization.allowAdminInvites)
+        !canAccessOrganization(sender.role, 'invite', invite.organization.allowAdminInvites) ||
+        (invite.role === 'ADMIN' && sender.role !== 'OWNER')
       ) {
         await prisma.$transaction([
           prisma.invitation.updateMany({

@@ -5,10 +5,17 @@ import { OrganizationsController } from './organizations.controller';
 import { OrganizationsService } from './organizations.service';
 import { MembersService } from './members.service';
 import { MembersController } from './members.controller';
+import { InvitationsService } from './invitations.service';
+import { InvitationsController, OrganizationInvitationsController } from './invitations.controller';
 @Module({
   imports: [AuthModule, AuthorizationModule],
-  controllers: [OrganizationsController, MembersController],
-  providers: [OrganizationsService, MembersService],
+  controllers: [
+    OrganizationsController,
+    MembersController,
+    InvitationsController,
+    OrganizationInvitationsController,
+  ],
+  providers: [OrganizationsService, MembersService, InvitationsService],
   exports: [OrganizationsService],
 })
 export class OrganizationsModule {}
