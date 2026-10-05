@@ -343,6 +343,11 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
                         <Link href={`/projects?workspaceId=${resource.id}`}>Open projects</Link>
                       </Button>
                     )}
+                    {!isWorkspace && (
+                      <Button asChild className="mt-6" variant="outline">
+                        <Link href={`/boards?projectId=${resource.id}`}>Open boards</Link>
+                      </Button>
+                    )}
                     {resource.canManage && (
                       <div className="mt-6 border-t border-border pt-5">
                         <Button
