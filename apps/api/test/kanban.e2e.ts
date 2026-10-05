@@ -8,6 +8,9 @@ import {
   commentSchema,
   attachmentSchema,
   attachmentDownloadSchema,
+  searchHitSchema,
+  myTaskSchema,
+  dashboardSchema,
   boardSnapshotSchema,
   taskDetailSchema,
   taskSchema,
@@ -68,6 +71,138 @@ beforeAll(async () => {
     await request(`/workspaces/${workspaceId}/members`, 0, 'POST', { userId: users[actor]!.id });
     await request(`/projects/${projectId}/members`, 0, 'POST', { userId: users[actor]!.id });
   }
+});
+describe.sequential('Global discovery and personal task scope', () => {
+  let publicTaskId: string;
+  const term = `Discovery-${suffix}`;
+  it('finds visible tasks, projects, comments and shared-organization members', async () => {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { name: `${term} public project`, status: 'ACTIVE' },
+    });
+    const publicBoard = await prisma.board.create({
+      data: {
+        projectId,
+        name: 'Discovery',
+        columns: {
+          create: [
+            { name: 'To do', position: 0 },
+            { name: 'Done', kind: 'DONE', position: 1 },
+          ],
+        },
+      },
+      include: { columns: { orderBy: { position: 'asc' } } },
+    });
+    const task = await prisma.task.create({
+      data: {
+        columnId: publicBoard.columns[0]!.id,
+        title: `${term} visible task`,
+        position: 1,
+        priority: 'HIGH',
+        dueDate: new Date('2020-01-01'),
+        assignees: { create: { userId: users[1]!.id } },
+        comments: { create: { authorId: users[2]!.id, text: `${term} visible comment` } },
+      },
+    });
+    publicTaskId = task.id;
+    await prisma.task.create({
+      data: {
+        columnId: publicBoard.columns[1]!.id,
+        title: 'Already done',
+        position: 1,
+        priority: 'LOW',
+        dueDate: new Date('2020-01-01'),
+        assignees: { create: { userId: users[1]!.id } },
+      },
+    });
+    const hidden = await prisma.workspace.create({
+      data: {
+        organizationId,
+        name: 'Hidden discovery',
+        slug: `hidden-${suffix}`,
+        projects: {
+          create: {
+            ownerId: users[0]!.id,
+            name: `${term} private project`,
+            status: 'ACTIVE',
+            boards: {
+              create: {
+                name: 'Private',
+                columns: {
+                  create: {
+                    name: 'Private',
+                    position: 0,
+                    tasks: {
+                      create: {
+                        title: `${term} secret task`,
+                        position: 1,
+                        priority: 'URGENT',
+                        dueDate: new Date('2020-01-01'),
+                        assignees: { create: { userId: users[1]!.id } },
+                        comments: {
+                          create: { text: `${term} secret comment`, authorId: users[0]!.id },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(hidden.id).toBeDefined();
+    for (const type of ['tasks', 'projects', 'comments']) {
+      const list = await (await request(`/search?type=${type}&search=${term}&limit=1`, 1)).json();
+      expect(list.meta.total).toBe(1);
+      expect(searchHitSchema.parse(list.data[0]).title).not.toContain('secret');
+      expect(
+        (await (await request(`/search?type=${type}&search=${term}`, 3)).json()).meta.total,
+      ).toBe(0);
+      expect(
+        (await (await request(`/search?type=${type}&search=${term}`, 0)).json()).meta.total,
+      ).toBe(2);
+    }
+    const members = await (await request('/search?type=members&search=Colleague', 1)).json();
+    expect(members.meta.total).toBe(1);
+    expect(searchHitSchema.parse(members.data[0]).title).toBe('Colleague');
+    expect(
+      (await (await request('/search?type=members&search=Colleague', 3)).json()).meta.total,
+    ).toBe(0);
+    expect((await request('/search?type=tasks&search=x', 1)).status).toBe(400);
+  });
+  it('lists assigned tasks only within current parent memberships and composes filters', async () => {
+    const list = await (await request('/me/tasks?due=overdue&priority=HIGH&status=TODO', 1)).json();
+    expect(list.meta.total).toBe(1);
+    expect(myTaskSchema.parse(list.data[0]).id).toBe(publicTaskId);
+    expect((await (await request('/me/tasks?due=overdue&status=DONE', 1)).json()).meta.total).toBe(
+      0,
+    );
+    expect((await (await request('/me/tasks', 1)).json()).meta.total).toBe(2);
+    expect((await (await request('/me/tasks', 3)).json()).meta.total).toBe(0);
+  });
+  it('calculates dashboard aggregates and excludes private project data', async () => {
+    const dashboard = dashboardSchema.parse((await (await request('/dashboard', 1)).json()).data);
+    expect(dashboard).toMatchObject({
+      activeProjects: 1,
+      openTasks: 1,
+      completedTasks: 1,
+      overdue: 1,
+      dueSoon: 0,
+    });
+    expect(dashboard.byPriority).toEqual(
+      expect.arrayContaining([
+        { priority: 'HIGH', count: 1 },
+        { priority: 'LOW', count: 1 },
+      ]),
+    );
+    expect(dashboard.recentProjects).toHaveLength(1);
+    expect(dashboard.recentProjects[0]).toMatchObject({ openTasks: 1, completedTasks: 1 });
+    expect(
+      dashboardSchema.parse((await (await request('/dashboard', 3)).json()).data).openTasks,
+    ).toBe(0);
+  });
 });
 describe.sequential('Private task attachments and object cleanup', () => {
   let taskId: string;

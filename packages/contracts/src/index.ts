@@ -46,3 +46,4 @@ export * from './kanban';
 export * from './realtime';
 export * from './notifications';
 export * from './collaboration';
+export * from './discovery';

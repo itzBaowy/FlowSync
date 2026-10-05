@@ -16,6 +16,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { KanbanModule } from './modules/kanban/kanban.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     ProjectsModule,
     KanbanModule,
     RealtimeModule,
+    DiscoveryModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },
