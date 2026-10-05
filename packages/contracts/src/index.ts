@@ -45,3 +45,4 @@ export * from './projects';
 export * from './kanban';
 export * from './realtime';
 export * from './notifications';
+export * from './collaboration';
