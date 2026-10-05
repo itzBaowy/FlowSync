@@ -4,13 +4,29 @@ import { PrismaService } from '../../database/prisma.service';
 import { PaginatedResult } from '../../common/pagination';
 import { PermissionService } from '../authorization/permission.service';
 import { organizationView } from './organizations.service';
+import type { Prisma } from '../../generated/prisma/client';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly events: RealtimeEventsService,
   ) {}
+  private async mutate<T>(
+    organizationId: string,
+    run: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) {
+    const where = { project: { workspace: { organizationId } } };
+    const result = await this.prisma.$transaction(async (tx) => {
+      const result = await run(tx);
+      await tx.board.updateMany({ where, data: { revision: { increment: 1 } } });
+      return result;
+    });
+    await this.events.boardsChanged(where);
+    return result;
+  }
   async list(actorId: string, organizationId: string, query: ListQuery) {
     await this.permissions.requireOrganization(actorId, organizationId, 'read');
     const where = {
@@ -60,7 +76,7 @@ export class MembersService {
     targetId: string,
     role: 'ADMIN' | 'MEMBER',
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.mutate(organizationId, async (tx) => {
       await this.permissions.lockOrganization(tx, organizationId);
       const actor = await this.permissions.requireOrganization(
         actorId,
@@ -82,7 +98,7 @@ export class MembersService {
     });
   }
   async remove(actorId: string, organizationId: string, targetId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.mutate(organizationId, async (tx) => {
       await this.permissions.lockOrganization(tx, organizationId);
       const actor = await this.permissions.requireOrganization(
         actorId,
@@ -98,6 +114,13 @@ export class MembersService {
         throw new ConflictException('The owner cannot be removed; transfer ownership first');
       if (await tx.project.count({ where: { ownerId: targetId, workspace: { organizationId } } }))
         throw new ConflictException('Transfer project ownership before removing this member');
+      await tx.task.updateMany({
+        where: {
+          assignees: { some: { userId: targetId } },
+          column: { board: { project: { workspace: { organizationId } } } },
+        },
+        data: { version: { increment: 1 } },
+      });
       await tx.taskAssignee.deleteMany({
         where: {
           userId: targetId,
@@ -117,7 +140,7 @@ export class MembersService {
     });
   }
   async transferOwner(actorId: string, organizationId: string, targetId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.mutate(organizationId, async (tx) => {
       await this.permissions.lockOrganization(tx, organizationId);
       await this.permissions.requireOrganization(actorId, organizationId, 'transfer_owner', tx);
       if (actorId === targetId) throw new ConflictException('Select a different member');

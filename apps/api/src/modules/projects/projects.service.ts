@@ -16,6 +16,7 @@ import { Prisma, type Project } from '../../generated/prisma/client';
 import { PermissionService } from '../authorization/permission.service';
 import { PaginatedResult } from '../../common/pagination';
 import { publicMemberSelect } from '../workspaces/workspaces.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 export const projectView = (row: Project, canManage: boolean) => ({
   id: row.id,
   workspaceId: row.workspaceId,
@@ -34,6 +35,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly events: RealtimeEventsService,
   ) {}
   private async mutate<T>(
     userId: string,
@@ -41,11 +43,18 @@ export class ProjectsService {
     run: (tx: Prisma.TransactionClient, project: Project) => Promise<T>,
   ) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         await this.permissions.lockProject(tx, id);
         const actor = await this.permissions.requireProject(userId, id, 'manage', tx);
-        return run(tx, actor.project);
+        const result = await run(tx, actor.project);
+        await tx.board.updateMany({
+          where: { projectId: id },
+          data: { revision: { increment: 1 } },
+        });
+        return result;
       });
+      await this.events.boardsChanged({ projectId: id });
+      return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
         throw new ConflictException('Project membership already exists');
@@ -235,6 +244,10 @@ export class ProjectsService {
         }))
       )
         throw new NotFoundException('Project member not found');
+      await tx.task.updateMany({
+        where: { assignees: { some: { userId: targetId } }, column: { board: { projectId: id } } },
+        data: { version: { increment: 1 } },
+      });
       await tx.taskAssignee.deleteMany({
         where: { userId: targetId, task: { column: { board: { projectId: id } } } },
       });

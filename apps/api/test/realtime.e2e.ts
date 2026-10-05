@@ -221,5 +221,22 @@ describe.sequential('Committed board changes across API replicas', () => {
     expect((await changed).revision).toBe(2);
     expect(received).toHaveLength(0);
     await prisma.projectMember.create({ data: { projectId, userId: users[1]!.id } });
+    await join(remote, boardId);
+    const removed = nextEvent(remote, 'board:revoked');
+    const task = await prisma.task.findFirstOrThrow({ where: { column: { boardId } } });
+    await prisma.taskAssignee.create({ data: { taskId: task.id, userId: users[1]!.id } });
+    expect(
+      (
+        await fetch(`${api.baseUrl}/projects/${projectId}/members/${users[1]!.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${users[0]!.token}` },
+        })
+      ).status,
+    ).toBe(200);
+    expect(await removed).toEqual({ boardId });
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).version).toBe(
+      task.version + 1,
+    );
+    await prisma.projectMember.create({ data: { projectId, userId: users[1]!.id } });
   });
 });

@@ -15,6 +15,7 @@ import { Prisma, type Workspace } from '../../generated/prisma/client';
 import { PermissionService } from '../authorization/permission.service';
 import { managesOrganizationScope } from '../authorization/scope.policy';
 import { PaginatedResult } from '../../common/pagination';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 export const workspaceView = (row: Workspace, canManage: boolean) => ({
   id: row.id,
@@ -37,6 +38,7 @@ export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly events: RealtimeEventsService,
   ) {}
   private async mutate<T>(
     id: string,
@@ -44,11 +46,18 @@ export class WorkspacesService {
     run: (tx: Prisma.TransactionClient) => Promise<T>,
   ) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         await this.permissions.lockWorkspace(tx, id);
         await this.permissions.requireWorkspace(userId, id, 'manage', tx);
-        return run(tx);
+        const result = await run(tx);
+        await tx.board.updateMany({
+          where: { project: { workspaceId: id } },
+          data: { revision: { increment: 1 } },
+        });
+        return result;
       });
+      await this.events.boardsChanged({ project: { workspaceId: id } });
+      return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
         throw new ConflictException('Workspace slug or membership already exists');
@@ -188,6 +197,13 @@ export class WorkspacesService {
         throw new NotFoundException('Workspace member not found');
       if (await tx.project.count({ where: { workspaceId: id, ownerId: targetId } }))
         throw new ConflictException('Transfer project ownership before removing this member');
+      await tx.task.updateMany({
+        where: {
+          assignees: { some: { userId: targetId } },
+          column: { board: { project: { workspaceId: id } } },
+        },
+        data: { version: { increment: 1 } },
+      });
       await tx.taskAssignee.deleteMany({
         where: { userId: targetId, task: { column: { board: { project: { workspaceId: id } } } } },
       });

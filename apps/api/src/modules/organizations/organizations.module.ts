@@ -10,8 +10,9 @@ import { InvitationsController, OrganizationInvitationsController } from './invi
 import { StorageModule } from '../files/storage.module';
 import { LogoController } from './logo.controller';
 import { LogoService } from './logo.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 @Module({
-  imports: [AuthModule, AuthorizationModule, StorageModule],
+  imports: [AuthModule, AuthorizationModule, StorageModule, RealtimeModule],
   controllers: [
     OrganizationsController,
     MembersController,
