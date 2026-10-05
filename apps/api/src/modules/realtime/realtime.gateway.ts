@@ -22,12 +22,14 @@ import { RedisService } from '../../database/redis.service';
 import { TokenService } from '../auth/token.service';
 import { PermissionService } from '../authorization/permission.service';
 import { RealtimeEventsService } from './realtime-events.service';
+import { PresenceService } from './presence.service';
 type SocketData = {
   userId: string;
   expiresAt: number;
   boardIds: string[];
   windowAt: number;
   packets: number;
+  joining: boolean;
 };
 type Client = Socket<
   Record<string, (...args: unknown[]) => void>,
@@ -37,7 +39,13 @@ type Client = Socket<
 >;
 type Ack = (response: BoardJoined) => void;
 @Injectable()
-@WebSocketGateway({ namespace: '/realtime', transports: ['websocket'], maxHttpBufferSize: 8192 })
+@WebSocketGateway({
+  namespace: '/realtime',
+  transports: ['websocket'],
+  maxHttpBufferSize: 8192,
+  pingInterval: 10000,
+  pingTimeout: 5000,
+})
 export class RealtimeGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
@@ -46,6 +54,8 @@ export class RealtimeGateway
   private sub?: Redis;
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly prefix: string;
+  private pulse?: ReturnType<typeof setInterval>;
+  private pulsing = false;
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly redis: RedisService,
@@ -53,6 +63,7 @@ export class RealtimeGateway
     private readonly tokens: TokenService,
     private readonly permissions: PermissionService,
     private readonly events: RealtimeEventsService,
+    private readonly presence: PresenceService,
   ) {
     this.prefix = `flowsync:${config.get('NODE_ENV', { infer: true })}:realtime`;
   }
@@ -87,7 +98,10 @@ export class RealtimeGateway
           boardIds: [],
           windowAt: Date.now(),
           packets: 0,
+          joining: false,
         } satisfies SocketData;
+        if (!(await this.presence.reserve(claims.sub, socket.id)))
+          return next(new Error('RATE_LIMITED'));
         next();
       } catch {
         next(new Error('UNAUTHORIZED'));
@@ -98,6 +112,13 @@ export class RealtimeGateway
       if (event.success) void this.deliver(event.data);
     });
     this.events.attach(namespace, (event) => this.deliver(event));
+    namespace.on('internal:presence', (input: unknown) => {
+      const parsed = boardRoomSchema.safeParse(input);
+      if (parsed.success) void this.deliverPresence(parsed.data.boardId);
+    });
+    this.pulse = setInterval(() => {
+      void this.heartbeat();
+    }, 15000);
   }
   handleConnection(socket: Client) {
     this.timers.set(
@@ -112,13 +133,28 @@ export class RealtimeGateway
     );
     // REST global guards/filters are HTTP-specific. Socket handlers validate/auth/rate-limit here.
     socket.on('board:join', (input: unknown, callback: unknown) => {
-      void this.join(socket, input, typeof callback === 'function' ? (callback as Ack) : () => {});
+      const ack = typeof callback === 'function' ? (callback as Ack) : () => {};
+      if (socket.data.joining)
+        return ack({
+          ok: false,
+          code: 'RATE_LIMITED',
+          message: 'Wait for the previous subscription',
+        });
+      socket.data.joining = true;
+      void this.join(socket, input, ack).finally(() => {
+        socket.data.joining = false;
+      });
     });
     socket.on('board:leave', (input: unknown, callback: unknown) => {
+      if (!this.allowed(socket)) return;
       const room = boardRoomSchema.safeParse(input);
       if (!room.success) return;
       socket.data.boardIds = socket.data.boardIds.filter((id) => id !== room.data.boardId);
       void socket.leave(`board:${room.data.boardId}`);
+      void this.presence
+        .leave(socket.data.userId, socket.id, room.data.boardId)
+        .then(() => this.publishPresence(room.data.boardId))
+        .catch(() => {});
       if (typeof callback === 'function') callback({ ok: true });
     });
   }
@@ -126,6 +162,11 @@ export class RealtimeGateway
     const timer = this.timers.get(socket.id);
     if (timer) clearTimeout(timer);
     this.timers.delete(socket.id);
+    if (socket.data.userId)
+      void this.presence
+        .disconnect(socket.data.userId, socket.id, socket.data.boardIds)
+        .then(() => Promise.all(socket.data.boardIds.map((id) => this.publishPresence(id))))
+        .catch(() => {});
   }
   private async board(userId: string, id: string) {
     const board = await this.prisma.board.findUnique({ where: { id } });
@@ -162,7 +203,9 @@ export class RealtimeGateway
       const board = await this.board(socket.data.userId, parsed.data.boardId);
       await socket.join(`board:${board.id}`);
       if (!socket.data.boardIds.includes(board.id)) socket.data.boardIds.push(board.id);
+      await this.presence.touch(socket.data.userId, socket.id, socket.data.boardIds);
       ack({ ok: true, boardId: board.id, revision: board.revision });
+      void this.publishPresence(board.id);
     } catch (error) {
       ack({
         ok: false,
@@ -189,11 +232,62 @@ export class RealtimeGateway
             socket.data.boardIds = socket.data.boardIds.filter((id) => id !== event.boardId);
             await socket.leave(`board:${event.boardId}`);
             socket.emit('board:revoked', { boardId: event.boardId });
+            await this.presence.leave(socket.data.userId, socket.id, event.boardId);
           }
         }),
     );
+    await this.publishPresence(event.boardId);
+  }
+  private async publishPresence(boardId: string) {
+    try {
+      this.namespace?.serverSideEmit('internal:presence', { boardId });
+      await this.deliverPresence(boardId);
+    } catch {
+      /* Redis leases expire if a node or transport fails. */
+    }
+  }
+  private async deliverPresence(boardId: string) {
+    try {
+      const snapshot = await this.presence.snapshot(boardId);
+      const clients = [...(this.namespace?.sockets.values() ?? [])] as Client[];
+      await Promise.all(
+        clients
+          .filter((socket) => socket.data.boardIds.includes(boardId))
+          .map(async (socket) => {
+            try {
+              await this.board(socket.data.userId, boardId);
+              if (socket.connected && socket.data.expiresAt > Date.now())
+                socket.emit('presence:changed', snapshot);
+            } catch {
+              socket.data.boardIds = socket.data.boardIds.filter((id) => id !== boardId);
+              await socket.leave(`board:${boardId}`);
+              await this.presence.leave(socket.data.userId, socket.id, boardId);
+              socket.emit('board:revoked', { boardId });
+            }
+          }),
+      );
+    } catch {
+      /* A later heartbeat replaces the presence snapshot. */
+    }
+  }
+  private async heartbeat() {
+    if (this.pulsing || !this.namespace) return;
+    this.pulsing = true;
+    try {
+      const clients = [...this.namespace.sockets.values()] as Client[];
+      for (const socket of clients)
+        if (socket.connected)
+          await this.presence.touch(socket.data.userId, socket.id, socket.data.boardIds);
+      const boards = [...new Set(clients.flatMap((socket) => socket.data.boardIds))];
+      await Promise.all(boards.map((id) => this.publishPresence(id)));
+    } catch {
+      /* Preserve DB access control; presence recovers after Redis reconnects. */
+    } finally {
+      this.pulsing = false;
+    }
   }
   onModuleDestroy() {
+    if (this.pulse) clearInterval(this.pulse);
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.pub?.disconnect();
     this.sub?.disconnect();

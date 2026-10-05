@@ -22,3 +22,11 @@ export const boardJoinedSchema = z.union([
 ]);
 export type BoardChanged = z.infer<typeof boardChangedSchema>;
 export type BoardJoined = z.infer<typeof boardJoinedSchema>;
+export const presenceSchema = z.object({
+  boardId: z.string().uuid(),
+  members: z
+    .array(z.object({ id: z.string().uuid(), name: z.string(), avatarUrl: z.string().nullable() }))
+    .max(200),
+  totalOnline: z.number().int().nonnegative(),
+});
+export type BoardPresence = z.infer<typeof presenceSchema>;

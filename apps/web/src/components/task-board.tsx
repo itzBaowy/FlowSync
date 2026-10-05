@@ -12,7 +12,7 @@ import { TaskPanel } from './task-panel';
 import { KanbanCanvas } from './kanban-canvas';
 import { useBoardRealtime } from '@/lib/use-board-realtime';
 export function TaskBoard({ board }: { board: BoardSnapshot }) {
-  const realtime = useBoardRealtime(board.id);
+  const { status: realtime, presence } = useBoardRealtime(board.id);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -43,6 +43,23 @@ export function TaskBoard({ board }: { board: BoardSnapshot }) {
               ? 'Connecting live updates...'
               : 'Live updates disconnected. Reconnecting...'}
       </p>
+      {presence && (
+        <div
+          aria-label="Online board members"
+          className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+        >
+          <span>{presence.totalOnline} online</span>
+          {presence.members.map((member) => (
+            <span
+              key={member.id}
+              className="flex items-center gap-1 rounded-full border border-border px-2 py-1"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              {member.name}
+            </span>
+          ))}
+        </div>
+      )}
       {realtime === 'revoked' ? (
         <Notice error="You no longer have access to this board." />
       ) : (

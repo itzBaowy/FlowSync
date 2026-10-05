@@ -2,7 +2,13 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { boardChangedSchema, boardJoinedSchema, type BoardSnapshot } from '@flowsync/contracts';
+import {
+  boardChangedSchema,
+  boardJoinedSchema,
+  presenceSchema,
+  type BoardPresence,
+  type BoardSnapshot,
+} from '@flowsync/contracts';
 import { ApiError, getAccessToken, refreshSession } from './api';
 import { kanbanKeys } from './kanban';
 type Status = 'connecting' | 'live' | 'offline' | 'revoked';
@@ -12,6 +18,7 @@ const url =
 export function useBoardRealtime(boardId: string) {
   const client = useQueryClient();
   const [status, setStatus] = useState<Status>('connecting');
+  const [presence, setPresence] = useState<BoardPresence | null>(null);
   useEffect(() => {
     let stopped = false;
     let renewing = false;
@@ -93,6 +100,10 @@ export function useBoardRealtime(boardId: string) {
       if (!event.data.deleted && snapshot && event.data.revision <= snapshot.revision) return;
       void refresh();
     });
+    socket.on('presence:changed', (input: unknown) => {
+      const snapshot = presenceSchema.safeParse(input);
+      if (snapshot.success && snapshot.data.boardId === boardId) setPresence(snapshot.data);
+    });
     const recover = () => {
       if (!stopped) void refresh();
     };
@@ -123,5 +134,5 @@ export function useBoardRealtime(boardId: string) {
       socket.disconnect();
     };
   }, [boardId, client]);
-  return status;
+  return { status, presence: status === 'live' ? presence : null };
 }

@@ -75,6 +75,8 @@ test('two users receive board and task updates, recover on reconnect and lose re
       await expect(target.getByLabel('Realtime status')).toHaveText('Live updates connected');
     }
     await expect(memberPage.getByText('Board settings', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Online board members')).toContainText('2 online');
+    await expect(page.getByLabel('Online board members')).toContainText('Realtime Member');
     await page.getByRole('button', { name: 'New task', exact: true }).click();
     await page.getByLabel('Task title', { exact: true }).fill('Live delivery');
     await page.getByRole('checkbox', { name: /Realtime Member/ }).check();
@@ -100,6 +102,9 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await context.setOffline(true);
     await expect(memberPage.getByLabel('Realtime status')).toContainText('disconnected');
+    await expect(page.getByLabel('Online board members')).toContainText('1 online', {
+      timeout: 20000,
+    });
     await page
       .getByLabel('Kanban columns', { exact: true })
       .getByRole('button', { name: 'Live delivery updated', exact: true })
@@ -109,6 +114,7 @@ test('two users receive board and task updates, recover on reconnect and lose re
     await ownerPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await context.setOffline(false);
     await expect(memberPage.getByLabel('Realtime status')).toHaveText('Live updates connected');
+    await expect(page.getByLabel('Online board members')).toContainText('2 online');
     await expect(
       memberCanvas.getByRole('button', { name: 'Changed while offline', exact: true }),
     ).toBeVisible();

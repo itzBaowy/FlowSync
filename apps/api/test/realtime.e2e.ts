@@ -5,7 +5,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { io, type Socket } from 'socket.io-client';
 import { JwtService } from '@nestjs/jwt';
-import { boardJoinedSchema } from '@flowsync/contracts';
+import { boardJoinedSchema, presenceSchema } from '@flowsync/contracts';
+import Redis from 'ioredis';
 import { startTestApi } from './helpers/api-server';
 config({ path: '../../.env', quiet: true });
 const prisma = new PrismaClient({
@@ -13,6 +14,12 @@ const prisma = new PrismaClient({
 });
 const users: { id: string; token: string }[] = [];
 const connections: Socket[] = [];
+const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  port: Number(process.env.REDIS_PORT),
+  password: process.env.REDIS_PASSWORD,
+  maxRetriesPerRequest: 1,
+});
 let api: Awaited<ReturnType<typeof startTestApi>>;
 let replica: Awaited<ReturnType<typeof startTestApi>> | undefined;
 let organizationId: string;
@@ -101,6 +108,7 @@ afterAll(async () => {
   }
   await prisma.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
   await prisma.$disconnect();
+  redis.disconnect();
 });
 describe.sequential('Authenticated board subscriptions', () => {
   it('rejects absent, tampered, expired tokens and foreign browser origins', async () => {
@@ -238,5 +246,68 @@ describe.sequential('Committed board changes across API replicas', () => {
       task.version + 1,
     );
     await prisma.projectMember.create({ data: { projectId, userId: users[1]!.id } });
+  });
+});
+describe.sequential('Distributed online presence and connection leases', () => {
+  it('deduplicates multiple tabs, shares presence between replicas and expires stale leases', async () => {
+    connections.forEach((socket) => socket.disconnect());
+    await expect
+      .poll(async () => redis.zcard(`flowsync:test:presence:connections:${users[1]!.id}`), {
+        timeout: 3000,
+      })
+      .toBe(0);
+    const owner = await connect(users[0]!.token);
+    const ownerTab = await connect(users[0]!.token, process.env.WEB_URL, replica!);
+    const member = await connect(users[1]!.token, process.env.WEB_URL, replica!);
+    let latest: unknown;
+    owner.on('presence:changed', (snapshot) => {
+      latest = snapshot;
+    });
+    await join(owner, boardId);
+    await join(ownerTab, boardId);
+    await join(member, boardId);
+    await expect
+      .poll(
+        () => presenceSchema.safeParse(latest).success && presenceSchema.parse(latest).totalOnline,
+      )
+      .toBe(2);
+    expect(
+      presenceSchema
+        .parse(latest)
+        .members.map((user) => user.id)
+        .sort(),
+    ).toEqual(
+      users
+        .slice(0, 2)
+        .map((user) => user.id)
+        .sort(),
+    );
+    expect(JSON.stringify(latest)).not.toContain('password');
+    const key = `flowsync:test:presence:board:${boardId}`;
+    const expiredLease = `${randomUUID()}:expired`;
+    expect(await redis.ttl(key)).toBeGreaterThan(0);
+    await redis.zadd(
+      key,
+      Date.now() - 1,
+      expiredLease,
+      Date.now() + 45000,
+      `${users[2]!.id}:foreign`,
+    );
+    await join(owner, boardId);
+    await expect.poll(async () => redis.zscore(key, `${users[2]!.id}:foreign`)).not.toBeNull();
+    expect(presenceSchema.parse(latest).members.some((user) => user.id === users[2]!.id)).toBe(
+      false,
+    );
+    await expect.poll(async () => redis.zscore(key, expiredLease)).toBeNull();
+    member.disconnect();
+    await expect.poll(() => presenceSchema.parse(latest).totalOnline).toBe(1);
+    ownerTab.disconnect();
+    await expect.poll(() => presenceSchema.parse(latest).totalOnline).toBe(1);
+    await redis.zrem(key, `${users[2]!.id}:foreign`);
+  });
+  it('limits active connections per user across replicas', async () => {
+    for (let index = 0; index < 10; index++)
+      await connect(users[2]!.token, process.env.WEB_URL, index % 2 ? replica! : api);
+    await expect(connect(users[2]!.token)).rejects.toThrow('RATE_LIMITED');
   });
 });
