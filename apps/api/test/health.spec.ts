@@ -14,7 +14,7 @@ afterEach(() => {
 function fixture() {
   const query = vi.fn(async () => [{ ready: 1 }]);
   const ping = vi.fn(async () => 'PONG');
-  const storage = vi.spyOn(S3Client.prototype, 'send').mockResolvedValue({ $metadata: {} });
+  const storage = vi.spyOn(S3Client.prototype, 'send').mockResolvedValue(undefined);
   const config = new ConfigService<Environment, true>({
     MINIO_ENDPOINT: 'http://localhost:9000',
     MINIO_ACCESS_KEY: 'fixture',
