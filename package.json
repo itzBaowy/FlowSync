@@ -27,7 +27,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:browser": "playwright test",
-    "worker:dev": "npm run worker:dev -w @flowsync/api"
+    "worker:dev": "npm run worker:dev -w @flowsync/api",
+    "jobs:status": "npm run jobs:status -w @flowsync/api",
+    "jobs:retry": "npm run jobs:retry -w @flowsync/api --"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

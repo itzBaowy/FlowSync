@@ -14,6 +14,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { io, type Socket } from 'socket.io-client';
 import type { Job } from 'bullmq';
+import { retryJob, pruneCompletedJobs } from '../src/modules/queue/job-maintenance';
 // Tests use the compiled Nest providers so TypeScript decorator metadata matches production.
 const { startBackgroundWorker } = createRequire(`${process.cwd()}/test/background-jobs.e2e.ts`)(
   '../dist/modules/queue/background-worker.js',
@@ -294,6 +295,89 @@ describe.sequential('Durable queues with real Redis, SMTP and object storage', (
     expect(failed!.stacktrace?.join('')).not.toContain('sensitive-marker');
     expect(failed!.attemptsMade).toBe(1);
     await failed!.remove();
+  });
+  it('retains failed SMTP jobs and supports a full manual retry after worker restart', async () => {
+    await worker!.stop();
+    worker = undefined;
+    let row: Awaited<ReturnType<typeof notification>> | undefined;
+    try {
+      worker = await startBackgroundWorker({ ...env, SMTP_URL: 'smtp://127.0.0.1:1' });
+      await worker.pump();
+      await worker.queues.email.pause();
+      row = await notification();
+      const job = await worker.queues.email.add(
+        'notification',
+        { notificationId: row.id },
+        { jobId: row.id, attempts: 2, backoff: { type: 'fixed', delay: 50 } },
+      );
+      await worker.queues.email.resume();
+      await finished(job, 'failed');
+      await until(
+        async () =>
+          (await prisma.notificationDelivery.findUnique({ where: { notificationId: row!.id } }))
+            ?.status === 'FAILED',
+      );
+      const failed = await worker.queues.email.getJob(row.id);
+      expect(failed!.attemptsMade).toBe(2);
+      expect(failed!.failedReason).toBe('Background job unavailable');
+      await worker.stop();
+      worker = await startBackgroundWorker(env);
+      await retryJob(prisma, env, 'email', worker.queues.email, row.id);
+      await until(
+        async () =>
+          (await prisma.notificationDelivery.findUnique({ where: { notificationId: row!.id } }))
+            ?.status === 'SENT',
+      );
+      const delivered = await prisma.notificationDelivery.findUniqueOrThrow({
+        where: { notificationId: row.id },
+      });
+      expect(delivered.attempts).toBe(3);
+      expect(delivered.lastError).toBeNull();
+      await expect(retryJob(prisma, env, 'email', worker.queues.email, row.id)).rejects.toThrow();
+      const mail = await (
+        await fetch(
+          `${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${accounts[1]!.email}`)}`,
+        )
+      ).json();
+      messages.push(...mail.messages.map((message: { ID: string }) => message.ID));
+    } finally {
+      if (worker) {
+        await worker.queues.email.resume();
+        await worker.stop();
+      }
+      worker = await startBackgroundWorker(env);
+    }
+  });
+  it('prunes completed bookkeeping only in the selected environment and retains failed work', async () => {
+    const old = new Date(Date.now() - 8 * 86400000);
+    const rows = await Promise.all([
+      prisma.objectCleanup.create({
+        data: { objectKey: `jobs/${suffix}/old-test`, environment: 'test', completedAt: old },
+      }),
+      prisma.objectCleanup.create({
+        data: {
+          objectKey: `jobs/${suffix}/old-other`,
+          environment: 'production',
+          completedAt: old,
+        },
+      }),
+      prisma.objectCleanup.create({
+        data: {
+          objectKey: `jobs/${suffix}/pending`,
+          environment: 'test',
+          createdAt: old,
+          nextAttemptAt: new Date(Date.now() + 3600000),
+          lastError: 'StorageError',
+        },
+      }),
+    ]);
+    await pruneCompletedJobs(prisma, 'test');
+    expect(await prisma.objectCleanup.findUnique({ where: { id: rows[0]!.id } })).toBeNull();
+    expect(
+      await prisma.objectCleanup.count({
+        where: { id: { in: rows.slice(1).map((row) => row.id) } },
+      }),
+    ).toBe(2);
   });
   it('removes abandoned objects but preserves keys referenced by committed attachments', async () => {
     const target = await task();

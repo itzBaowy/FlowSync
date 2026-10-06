@@ -14,6 +14,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "npm run build && vitest run --config vitest.e2e.config.ts",
     "worker": "node dist/worker.js",
+    "jobs:status": "node dist/jobs-cli.js status",
+    "jobs:retry": "node dist/jobs-cli.js retry",
     "worker:dev": "nodemon --watch src --ext ts --exec ts-node src/worker.ts"
   },
   "dependencies": {

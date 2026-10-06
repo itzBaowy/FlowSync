@@ -19,16 +19,10 @@ import {
 } from './notification-jobs.service';
 import { smtpTransport } from './smtp';
 import { UnrecoverableError } from 'bullmq';
+import { jobQueueNames, pruneCompletedJobs } from './job-maintenance';
 
 @Module({})
 class WorkerContext {}
-export function jobQueueNames(environment: string) {
-  return {
-    reminders: `flowsync-notifications-${environment}`,
-    email: `flowsync-notification-email-${environment}`,
-    files: `flowsync-files-${environment}`,
-  };
-}
 export async function startBackgroundWorker(env: Environment) {
   const app = await NestFactory.createApplicationContext(
     {
@@ -152,7 +146,12 @@ export async function startBackgroundWorker(env: Environment) {
   for (const queue of Object.values(queues)) queue.on('error', () => log('jobs.queue_unavailable'));
   let pumping: Promise<void> | undefined;
   let stopping = false;
+  let maintenanceAt = 0;
   async function dispatch() {
+    if (Date.now() - maintenanceAt > 3600000) {
+      await pruneCompletedJobs(prisma, env.NODE_ENV);
+      maintenanceAt = Date.now();
+    }
     const [deliveries, reminders, files] = await Promise.all([
       prisma.notificationDelivery.findMany({
         where: { environment: env.NODE_ENV, status: 'PENDING' },
