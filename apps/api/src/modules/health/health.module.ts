@@ -1,4 +1,10 @@
-import { Controller, Get, Module, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Module,
+  ServiceUnavailableException,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -10,8 +16,10 @@ import { RedisService } from '../../database/redis.service';
 @ApiTags('Health')
 @Controller('health')
 @SkipThrottle()
-export class HealthController {
+export class HealthController implements OnModuleDestroy {
   private readonly storage: S3Client;
+  private cached?: { until: number; checks: Record<string, string> };
+  private checking?: Promise<Record<string, string>>;
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -32,6 +40,23 @@ export class HealthController {
     return { status: 'ok' };
   }
   @Get('ready') async ready() {
+    if (!this.cached || this.cached.until <= Date.now()) {
+      this.checking ??= this.inspectDependencies()
+        .then((checks) => {
+          this.cached = { until: Date.now() + 2000, checks };
+          return checks;
+        })
+        .finally(() => {
+          this.checking = undefined;
+        });
+      await this.checking;
+    }
+    const checks = this.cached!.checks;
+    if (Object.values(checks).includes('down'))
+      throw new ServiceUnavailableException({ code: 'NOT_READY', checks });
+    return { status: 'ok', checks };
+  }
+  private async inspectDependencies() {
     const results = await Promise.allSettled([
       this.prisma.$queryRaw`SELECT 1`,
       this.redis.client.ping(),
@@ -46,9 +71,10 @@ export class HealthController {
         results[index]?.status === 'fulfilled' ? 'up' : 'down',
       ]),
     );
-    if (results.some((result) => result.status === 'rejected'))
-      throw new ServiceUnavailableException({ code: 'NOT_READY', checks });
-    return { status: 'ok', checks };
+    return checks;
+  }
+  onModuleDestroy() {
+    this.storage.destroy();
   }
 }
 
