@@ -60,6 +60,28 @@ a:focus-visible {
 ::selection {
   background: #6155d930;
 }
+meter {
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+meter::-webkit-meter-bar {
+  border: 0;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+meter::-webkit-meter-optimum-value,
+meter::-webkit-meter-suboptimum-value,
+meter::-webkit-meter-even-less-good-value {
+  border-radius: 9999px;
+  background: var(--primary);
+}
+meter::-moz-meter-bar {
+  border-radius: 9999px;
+  background: var(--primary);
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
