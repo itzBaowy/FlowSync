@@ -77,6 +77,12 @@ services:
     depends_on:
       api: { condition: service_healthy }
     stop_grace_period: 60s
+    healthcheck:
+      test: ['CMD', 'node', 'dist/worker-health.js']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
   proxy:
     image: caddy:2.11.7-alpine

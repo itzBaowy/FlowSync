@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { validateEnvironment } from './config/environment';
 import { startEmailWorker } from './modules/queue/email-worker';
 import { startBackgroundWorker } from './modules/queue/background-worker';
+import { startWorkerHeartbeat } from './worker-heartbeat';
 config({ path: '../../.env', quiet: true });
 async function bootstrap() {
   const env = validateEnvironment(process.env);
@@ -11,11 +12,13 @@ async function bootstrap() {
     await worker.stop();
     throw error;
   });
+  const stopHeartbeat = startWorkerHeartbeat();
   let closing = false;
   for (const signal of ['SIGINT', 'SIGTERM'] as const)
     process.on(signal, () => {
       if (closing) return;
       closing = true;
+      stopHeartbeat();
       void Promise.all([worker.stop(), background.stop()]).then(() => process.exit(0));
     });
 }

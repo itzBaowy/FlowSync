@@ -115,6 +115,12 @@ services:
   worker:
     build: { context: ., target: api }
     command: ['node', 'dist/worker.js']
+    healthcheck:
+      test: ['CMD', 'node', 'dist/worker-health.js']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     env_file: .env
     environment:
       NODE_ENV: development
