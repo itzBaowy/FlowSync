@@ -79,6 +79,14 @@ describe('environment validation', () => {
       expect(String(error)).not.toContain(secret);
     }
   });
+  it('requires HTTPS for browser storage URLs while allowing private internal endpoints', () => {
+    const production = { ...base, NODE_ENV: 'production', WEB_URL: 'https://app.example.com' };
+    expect(() => validateEnvironment(production)).toThrow('storage downloads require HTTPS');
+    expect(
+      validateEnvironment({ ...production, MINIO_PUBLIC_ENDPOINT: 'https://storage.example.com' })
+        .MINIO_ENDPOINT,
+    ).toBe('http://localhost:9000');
+  });
 });
 describe('JWT boundaries', () => {
   const config = new ConfigService<Environment, true>(base);

@@ -10,7 +10,7 @@ async function bootstrap() {
   configureApp(app);
   app.enableShutdownHooks();
   await app.listen(app.get(ConfigService).get<number>('API_PORT') ?? 4000, '0.0.0.0');
-  app.get(Logger).log('FlowSync API ready; Swagger: /api/docs');
+  app.get(Logger).log('FlowSync API ready');
 }
 bootstrap().catch(() => {
   console.error(

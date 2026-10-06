@@ -1,24 +1,46 @@
-# Deployment notes
+# Production deployment
 
-Phase 2 provides buildable API/web/worker images and CI. Cloud hosting is not provisioned. Choose hosting and inject actual secrets before rollout.
+Phase 9 provides a separate `compose.production.yaml`, Caddy TLS proxy, non-root application images, production dependency audit and backup/restore tooling. Cloud infrastructure and public DNS are not provisioned. Choose a server and isolated PostgreSQL/Redis/S3 services before running this configuration.
 
-1. Use a private network for PostgreSQL/Redis/object storage. Local MinIO is built from tagged [upstream releases](https://github.com/minio/minio/releases); production may use managed S3. Use bucket-scoped storage credentials instead of MinIO root credentials.
-2. Terminate TLS at a trusted proxy; set `NODE_ENV=production`, `WEB_URL=https://app.example.com`, distinct signing secrets, and `TRUST_PROXY_HOPS` to the actual proxy depth. Never trust arbitrary forwarded IPs. Route API on the same site for SameSite=Lax refresh cookies.
-3. Set `NEXT_PUBLIC_API_URL` at web image build time; it is public configuration embedded in JavaScript. Keep backend secrets out of build arguments/frontend bundles.
-4. Run migration as a separate release job using the `migrator` target and production DATABASE_URL. Do not run `prisma migrate dev`, schema push or seed demo accounts in production. Apply backward-compatible expand/contract migrations before rolling API replicas.
-5. Run API and web images as non-root, expose only the proxy, and configure liveness/readiness probes. Readiness includes the storage bucket; create it before rollout. Keep Swagger private if it should not be public.
-6. Collect JSON logs with request IDs; redact credentials; add latency/error/failed-job metrics as domain modules arrive. Set retention and alert thresholds. Rate limiting currently uses Redis and fails closed if Redis is unavailable.
-7. Schedule database backups, object lifecycle/retention and restore rehearsals. Session cleanup should keep rotated records for at least the JWT refresh lifetime so replay can still revoke a family; scheduled maintenance is a later milestone.
-8. Before broad production use, complete RBAC/domain MVP tests, cross-tab refresh coordination, access-token revocation policy, password recovery/email verification, upload scanning, security review and load tests. Add explicit token/session expiry policy (current refresh sessions are sliding seven-day sessions).
+## Prepare the environment
 
-Phase 2 email deployment:
+Copy `.env.production.example` to an ignored `.env.production` on the server and replace every placeholder. Use a secret manager or restrict file permissions. Set `FLOWSYNC_DOMAIN` to the public hostname, `WEB_URL=https://<hostname>` and `NEXT_PUBLIC_API_URL=https://<hostname>/api`. Keep distinct signing secrets and retain the invitation encryption key. API and worker must share environment/database/Redis/bucket and AI provider configuration.
 
-- Run `node dist/worker.js` from the API image in a separate process/container. Match API/worker `NODE_ENV`, database, Redis and `EMAIL_ENCRYPTION_KEY`; the queue name is environment-specific.
-- Configure `SMTP_URL`, `EMAIL_FROM`, sender authentication and SMTP credentials through a secret manager. Production requires TLS; local Mailpit is a development capture service.
-- Preserve the 64-character encryption key for pending outbox payloads. Key rotation requires migrating or draining those payloads first. Redis jobs contain only an outbox ID; tokens are never plaintext in Redis.
-- Monitor worker startup, `email.failed`, `email.outbox_retry`, SMTP delivery and pending outbox age. Five failed attempts retain the job for seven days; automatic infinite retries are intentionally absent. Operational retry/dead-letter tooling is Phase 7.
-- SMTP cannot guarantee exactly-once delivery after a worker crash. Stable Message-ID helps trace duplicates; the invitation can only be accepted once.
+Provision a private PostgreSQL 17 database, password-protected Redis and a private S3-compatible bucket. Use bucket-scoped storage credentials. `MINIO_ENDPOINT` may use an internal network URL; `MINIO_PUBLIC_ENDPOINT` must use browser-reachable HTTPS for signed downloads. Production validates this requirement. Configure authenticated SMTP with TLS and sender verification; Mailpit belongs only to local development. AI remains disabled until a model and provider key are configured and smoke tested.
 
-Logo deployment: `MINIO_ENDPOINT` is the internal API storage URL; `MINIO_PUBLIC_ENDPOINT` must be reachable by the browser and match the public S3 signing origin. Keep the bucket private. Logo responses are signed for five minutes; the organization screen refreshes metadata every four minutes. PNG/JPEG/WebP inputs are decoded, size/pixel bounded and re-encoded without metadata. Storage deletion is best-effort after DB commit; orphan reconciliation and malware scanning remain hardening work.
+Point DNS at the host and open only ports 80/443. [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https) obtains/renews certificates and redirects HTTP. Preserve its data volume across releases. API/web have no published host ports; the proxy handles `/api/*`, Socket.IO `/socket.io/*` and frontend routes on one origin. Swagger is disabled in production. Query strings are not access-logged because signed URLs may contain credentials. HSTS applies to this hostname without forcing other subdomains.
 
-Local Docker Compose intentionally uses HTTP/development cookie settings and loopback ports. For production, deploy targets with production ENV or provide an explicit Compose override removing local credentials/ports and setting HTTPS origins. Do not publish the local Compose configuration to an untrusted network.
+This configuration assumes one Caddy proxy directly in front of API and sets `TRUST_PROXY_HOPS=1`. If a CDN/load balancer is added, explicitly configure trusted proxy CIDRs and actual hop depth; do not trust arbitrary forwarded headers. Keep API inaccessible outside the private application network.
+
+## Build and release
+
+From a checkout of a verified commit on the server:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yaml config --quiet
+docker compose --env-file .env.production -f compose.production.yaml build api migrate web
+docker compose --env-file .env.production -f compose.production.yaml run --rm migrate
+docker compose --env-file .env.production -f compose.production.yaml up -d --no-build
+docker compose --env-file .env.production -f compose.production.yaml ps
+```
+
+Set `FLOWSYNC_RELEASE` to the commit SHA so image tags identify the release. Frontend public API configuration is embedded at build time; it is not a runtime secret. Production Compose has no database/Redis/MinIO/Mailpit services: inject the actual private service endpoints rather than exposing local credentials/ports. Read-only app filesystems have ephemeral writable caches, dropped Linux capabilities, bounded container logs and PID-1 signal handling.
+
+The migrator is a release job using `prisma migrate deploy`. Never use migrate dev/schema push on production. Both an explicit migration command and the dependency job can run; deploy is idempotent. Container startup waits for successful migrations and API readiness. Readiness checks PostgreSQL, Redis and the configured bucket; web has its own HTTP probe. Worker operator commands run inside its container:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yaml exec -T worker node dist/jobs-cli.js status
+docker compose --env-file .env.production -f compose.production.yaml exec -T worker node dist/jobs-cli.js retry ai <run-id>
+```
+
+## Rollout, monitoring and recovery
+
+CI checks contracts, strict types, lint/format, builds, unit/HTTP/browser tests, production advisory audit and a real isolated database restore. Before serving users, verify HTTPS, Secure/HttpOnly/SameSite refresh cookies, login/refresh/logout, same-origin mutation protection, private downloads, Socket.IO reconnect and SMTP delivery on the target infrastructure. Fixtures do not verify production SMTP/provider credentials or public certificate issuance.
+
+Collect API JSON logs with request IDs, user ID, path, status and response duration. Authorization/cookies are redacted and query strings/body contents are omitted. Collect fixed-message queue failures and monitor pending outbox age, failed-job counts, queue delays, disk capacity, health probes, p95 latency and error rate. Docker health status alone does not restart unhealthy containers; an external monitor/orchestrator must alert or replace them. Set thresholds from measurements, not assumed capacity.
+
+Use expand/contract migrations for rolling releases. Record the last healthy image SHA and a verified backup before migration. Rollback application images only if the schema remains backward compatible. Destructive SQL has no automatic safe undo: use a reviewed forward repair or restore into a separate database, validate it, then switch traffic/connections during a maintenance window. Never restore over the live database to experiment. Keep workers stopped during restoration/reconciliation to avoid duplicate SMTP or AI requests.
+
+[Backup operations](backups.md) describe local binary-safe archives and restore rehearsals; production needs encrypted off-host database/PITR and object backups with measured RPO/RTO. Preserve server secrets separately. [Security review](security.md) records the dependency findings and remaining work. Password recovery/email verification, malware scanning and independent security testing remain future improvements. SMTP remains at-least-once; stable Message-ID and invitation single-use checks cannot guarantee exactly-once email.
+
+Local `compose.yaml` remains an HTTP development environment on loopback ports. Do not publish it on an untrusted network. Production Compose/Caddy syntax is validated locally; an actual cloud rollout awaits the chosen host, domain and credentials.

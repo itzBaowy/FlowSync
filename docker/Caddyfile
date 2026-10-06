@@ -1,0 +1,21 @@
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$FLOWSYNC_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+
+	# Do not access-log query strings: private storage/invitation URLs can carry credentials.
+	handle /api/docs* {
+		respond 404
+	}
+	@api path /api /api/* /socket.io /socket.io/*
+	handle @api {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

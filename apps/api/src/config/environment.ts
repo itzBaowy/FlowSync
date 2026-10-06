@@ -72,6 +72,16 @@ export const environmentSchema = z
     if (value.NODE_ENV === 'production' && !value.WEB_URL.startsWith('https://')) {
       ctx.addIssue({ code: 'custom', path: ['WEB_URL'], message: 'Production requires HTTPS' });
     }
+    if (
+      value.NODE_ENV === 'production' &&
+      !(value.MINIO_PUBLIC_ENDPOINT ?? value.MINIO_ENDPOINT).startsWith('https://')
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MINIO_PUBLIC_ENDPOINT'],
+        message: 'Production storage downloads require HTTPS',
+      });
+    }
     if (URL.canParse(value.WEB_URL) && new URL(value.WEB_URL).origin !== value.WEB_URL) {
       ctx.addIssue({
         code: 'custom',

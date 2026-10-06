@@ -29,13 +29,13 @@ export function configureApp(app: INestApplication, swagger = true) {
     exposedHeaders: ['X-Request-Id'],
   });
   app.useGlobalInterceptors(new ResponseInterceptor());
-  if (swagger) {
+  if (swagger && config.get('NODE_ENV', { infer: true }) !== 'production') {
     const document = SwaggerModule.createDocument(
       app,
       new DocumentBuilder()
         .setTitle('FlowSync API')
         .setDescription(
-          'Phase 1: authentication and health. Domain CRUD arrives in subsequent milestones. All controller responses use { data, meta }.',
+          'Authentication, private organizations/workspaces/projects, Kanban, collaboration and assistant requests. Responses use { data, meta }.',
         )
         .setVersion('0.1.0')
         .addBearerAuth()
