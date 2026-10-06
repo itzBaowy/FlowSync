@@ -15,6 +15,8 @@ try {
     !/^[a-f0-9]{40}$/.test(sha ?? '') ||
     !token ||
     !process.env.GITHUB_OUTPUT ||
+    !/^\d+$/.test(process.env.GITHUB_RUN_ID ?? '') ||
+    !/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT ?? '') ||
     !domain ||
     domain.length > 253 ||
     domain.split('.').length < 2 ||
@@ -45,7 +47,7 @@ try {
     )
   )
     throw new Error('This commit has no successful CI run');
-  const tag = `${sha}-${createHash('sha256').update(domain).digest('hex').slice(0, 12)}`;
+  const tag = `${sha}-${createHash('sha256').update(domain).digest('hex').slice(0, 12)}-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
   const imagePrefix = `ghcr.io/${repository.toLowerCase()}`;
   await appendFile(
     process.env.GITHUB_OUTPUT,
