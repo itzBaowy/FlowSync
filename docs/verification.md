@@ -1,6 +1,6 @@
-# Phase 6 verification — 06/10/2026
+# Phase 7 verification — 06/10/2026
 
-Đã hoàn thành Phase 1–6 theo Requirements.md và luồng MVP ở mục 34. Phase 7 queue hardening tiếp tục; AI và production deployment chưa hoàn thành.
+Đã hoàn thành Phase 1–7 theo Requirements.md và luồng MVP ở mục 34. AI và production deployment đang tiếp tục.
 
 | Check                       | Kết quả                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -10,7 +10,7 @@
 | ESLint / Prettier           | Pass                                                                                              |
 | Production build            | Pass cho Next.js và NestJS                                                                        |
 | Unit/security tests         | 24 pass: auth, RBAC, contracts, mention parsing, encryption and attachment content validation     |
-| HTTP integration tests      | 65 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
+| HTTP integration tests      | 75 pass on real PostgreSQL/Redis/MinIO/Mailpit                                                    |
 | Browser tests               | 9 verified on local builds and Linux Docker containers                                            |
 | Docker targets              | API, web, migrator, worker và source-built MinIO build thành công                                 |
 | Compose runtime             | API/PostgreSQL/Redis/MinIO/Mailpit healthy; web/worker chạy; init exit 0                          |
@@ -23,7 +23,7 @@ Stack hiện chạy ở web http://localhost:3100, API http://localhost:4000/api
 
 Sau khi người dùng khắc phục dung lượng ổ C, đã build và chạy lại các container Phase 2 thành công. Các build loại browser artifacts/screenshots khỏi context; runtime API chỉ cài dependencies backend/contracts. Không xóa volumes hoặc containers của dự án khác.
 
-Repository đã kết nối [GitHub FlowSync](https://github.com/itzBaowy/FlowSync), branch `main`; commit/push theo từng lát. CI Linux của code Phase 2 ở commit `160d2bf` [đã xanh](https://github.com/itzBaowy/FlowSync/actions/runs/37342707321). Các commit mới tự chạy CI. Chưa provision cloud deployment. Cross-tab refresh coordination, password recovery/email verification, dead-letter tooling và orphan object reconciliation còn ở các milestone hardening.
+Repository đã kết nối [GitHub FlowSync](https://github.com/itzBaowy/FlowSync), branch `main`; commit/push theo từng lát. CI Linux của code Phase 2 ở commit `160d2bf` [đã xanh](https://github.com/itzBaowy/FlowSync/actions/runs/37342707321). Các commit mới tự chạy CI; run của `ee3e656` đang in progress tại lần kiểm tra. Chưa provision cloud deployment. Cross-tab refresh coordination, password recovery/email verification và full bucket reconciliation còn ở các milestone hardening.
 
 Phase 3 verifies workspace/project CRUD, private memberships, persisted date invariants, ownership concurrency, public profiles, descendant cleanup, structural delete protection and actual overview data. Browser tests cover CRUD/mobile and two-account membership/owner transfer/access revocation. Delivery outboxes are isolated by NODE_ENV.
 
@@ -32,3 +32,5 @@ Phase 4 adds scoped board/column/task CRUD, multiple assignees, project labels, 
 Phase 5 verifies authenticated Socket.IO, Redis fanout between API replicas, post-commit board events, immediate membership revocation, token expiry, distributed presence leases/caps, persisted recipient-scoped notifications and web reconnect/inbox/deep-link flows. See [Phase 5](phase5.md) for delivery limits and exact verification scope.
 
 Phase 6 verifies scoped comments/mentions and version conflicts, transactional activity retention/rollback, private attachment upload/download/deletion/compensation, global search privacy, assignment scope and actual dashboard aggregates. The full browser suite passes on local production builds and Linux Docker containers. See [Phase 6](phase6.md).
+
+Phase 7 verifies real SMTP failure/retry/restart, deduplicated reminders/email, notification permission checks at delivery, scoped workspace/project alerts, invalid payload failures, environment retention and safe file cleanup. Docker worker starts all queues; CLI status runs inside container and all 9 browser flows pass again. See [Phase 7](phase7.md).

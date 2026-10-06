@@ -8,7 +8,7 @@
 | 4 — Kanban (hoàn thành)              | Board/column/task CRUD, assignment, labels, checklist, archive, dnd-kit       | Thứ tự bền vững, cross-board move bị chặn, optimistic rollback, concurrency tests                |
 | 5 — Realtime (hoàn thành)            | Socket.IO auth + Redis adapter, board rooms, notification, presence           | Hai browser nhận update; reconnect/gap recovery; room permission + token expiry đã kiểm tra      |
 | 6 — Collaboration / MVP (hoàn thành) | Comments/mentions, activity, attachments, search, inbox, personal tasks       | Flow mục 34 chạy end-to-end; mention notifications, download permission, MIME/size checks đạt    |
-| 7 — Queue hardening                  | Worker deployment, retry/idempotency, email/maintenance/file jobs             | Duplicate delivery không duplicate side effect; retries/failure observability                    |
+| 7 — Queue hardening (hoàn thành)     | Notification/due/file workers, retry, failed-job tooling, scoped maintenance  | SMTP recovery, duplicate jobs, stale versions, private recipients và Docker đã kiểm tra          |
 | 8 — AI                               | Provider abstraction, summary/overdue, meeting-note suggestions               | Validated JSON, context tenant scoped, confirmation trước task creation                          |
 | 9 — Production                       | Staging/prod deploy, TLS, monitoring, backups, security review                | Restore rehearsal, migration rollback plan, load test, deployment smoke test                     |
 
