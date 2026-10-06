@@ -15,6 +15,7 @@
     "backup:database": "node scripts/database-backup.mjs",
     "verify:backup": "node scripts/database-restore.mjs",
     "test:load": "npm run build -w @flowsync/contracts && npm run db:generate && npm run build -w @flowsync/api && node scripts/load-test.mjs",
+    "test:production": "node scripts/production-smoke.mjs",
     "setup": "node scripts/setup.mjs",
     "dev": "npm run build -w @flowsync/contracts && concurrently -k -n contracts,api,web,worker \"npm run dev -w @flowsync/contracts\" \"npm run dev -w @flowsync/api\" \"npm run dev -w @flowsync/web\" \"npm run worker:dev -w @flowsync/api\"",
     "build": "npm run build -w @flowsync/contracts && npm run db:generate && npm run build -w @flowsync/api && npm run build -w @flowsync/web",

@@ -37,7 +37,7 @@ docker compose --env-file .env.production -f compose.production.yaml exec -T wor
 
 ## Rollout, monitoring and recovery
 
-CI checks contracts, strict types, lint/format, builds, unit/HTTP/browser tests, production advisory audit and a real isolated database restore. Before serving users, verify HTTPS, Secure/HttpOnly/SameSite refresh cookies, login/refresh/logout, same-origin mutation protection, private downloads, Socket.IO reconnect and SMTP delivery on the target infrastructure. Fixtures do not verify production SMTP/provider credentials or public certificate issuance.
+CI checks contracts, strict types, lint/format, builds, unit/HTTP/browser tests, production advisory audit, isolated database restore, bounded load and a production-mode TLS smoke stack. Before serving users, verify HTTPS, Secure/HttpOnly/SameSite refresh cookies, login/refresh/logout, same-origin mutation protection, private downloads, Socket.IO reconnect and SMTP delivery on the target infrastructure. Fixtures do not verify production SMTP/provider credentials or public certificate issuance.
 
 Collect API JSON logs with request IDs, user ID, path, status and response duration. Authorization/cookies are redacted and query strings/body contents are omitted. Collect fixed-message queue failures and monitor pending outbox age, failed-job counts, queue delays, disk capacity, health probes, p95 latency and error rate. Docker health status alone does not restart unhealthy containers; an external monitor/orchestrator must alert or replace them. Set thresholds from measurements, not assumed capacity.
 
@@ -47,4 +47,10 @@ Use expand/contract migrations for rolling releases. Record the last healthy ima
 
 [Backup operations](backups.md) describe local binary-safe archives and restore rehearsals; production needs encrypted off-host database/PITR and object backups with measured RPO/RTO. Preserve server secrets separately. [Security review](security.md) records the dependency findings and remaining work. Password recovery/email verification, malware scanning and independent security testing remain future improvements. SMTP remains at-least-once; stable Message-ID and invitation single-use checks cannot guarantee exactly-once email.
 
-Local `compose.yaml` remains an HTTP development environment on loopback ports. Do not publish it on an untrusted network. Production Compose/Caddy syntax is validated locally; an actual cloud rollout awaits the chosen host, domain and credentials.
+Local `compose.yaml` remains an HTTP development environment on loopback ports. Do not publish it on an untrusted network. Production Compose/Caddy syntax and runtime are verified in an isolated local stack; an actual cloud rollout awaits the chosen host, domain and credentials.
+
+## Reproduce the production smoke
+
+With Docker running and the local source-built MinIO image available (`npm run infra:up` builds it), run `npm run test:production`. The script builds current API/migrator/frontend images and boots a uniquely named Compose project with its own ephemeral PostgreSQL, Redis, MinIO and random credentials. Only loopback HTTP/TLS ports are published. It trusts that stack's local CA for Node requests, keeping certificate verification enabled and leaving the machine's trust store unchanged.
+
+The 16 checks cover dependency readiness, HTTP redirect, frontend, hidden Swagger, hostile origin rejection, Secure/HttpOnly/SameSite/HSTS, refresh rotation, bearer profile, private resource creation, image upload, signed HTTPS download, anonymous object denial, scoped WebSocket subscription over TLS, logout revocation, worker liveness and read-only/capability settings. The script tears down only its own project/volumes even after failure. Reports/configuration stay in ignored `.local/flowsync-smoke-<id>`; do not share generated environment files. This is local production-mode verification with a private CA, not a public DNS/ACME or live SMTP/provider smoke test.
