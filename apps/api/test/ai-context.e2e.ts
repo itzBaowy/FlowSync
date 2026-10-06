@@ -137,4 +137,35 @@ describe.sequential('Tenant-scoped and bounded AI context', () => {
     await expect(contexts.build(userIds[1]!, projectId)).rejects.toMatchObject({ status: 404 });
     expect((await contexts.build(userIds[0]!, projectId)).project.id).toBe(projectId);
   });
+  it('prioritizes open overdue work even when old completed tasks exceed the sampling limit', async () => {
+    const initial = await db.task.findUniqueOrThrow({
+      where: { id: taskId },
+      include: { column: true },
+    });
+    const done = await db.column.create({
+      data: { boardId: initial.column.boardId, name: 'Done', kind: 'DONE', position: 1 },
+    });
+    await db.task.createMany({
+      data: Array.from({ length: 45 }, (_, index) => ({
+        columnId: done.id,
+        title: `Old completed work ${index}`,
+        dueDate: new Date(Date.now() - 30 * 86400000),
+        position: (index + 1) * 1024,
+      })),
+    });
+    const urgent = await db.task.create({
+      data: {
+        columnId: initial.columnId,
+        title: 'Urgent overdue work',
+        priority: 'URGENT',
+        dueDate: new Date(Date.now() - 10000),
+        position: 2048,
+      },
+    });
+    const context = await contexts.build(userIds[0]!, projectId, 'OVERDUE');
+    expect(context.tasks.map((row) => row.id)).toEqual([urgent.id, taskId]);
+    expect(context.overdue).toHaveLength(2);
+    expect(context.totals.DONE).toBe(45);
+    expect(context.tasks.some((row) => row.status === 'DONE')).toBe(false);
+  });
 });

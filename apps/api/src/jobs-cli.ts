@@ -30,8 +30,11 @@ async function main() {
     const queue = new Queue(name, {
       connection,
       defaultJobOptions: {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: kind === 'files' ? 5000 : 1000 },
+        attempts: kind === 'ai' ? 3 : 5,
+        backoff: {
+          type: 'exponential',
+          delay: kind === 'ai' ? 30000 : kind === 'files' ? 5000 : 1000,
+        },
         removeOnComplete: { age: 3600, count: 1000 },
         removeOnFail: { age: 604800, count: 1000 },
       },
@@ -51,7 +54,7 @@ async function main() {
           counts: await queue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed'),
         })),
       );
-      const [deliveries, reminders, pendingFiles] = await Promise.all([
+      const [deliveries, reminders, pendingFiles, assistantRequests] = await Promise.all([
         prisma.notificationDelivery.groupBy({
           by: ['status'],
           where: { environment: env.NODE_ENV },
@@ -63,10 +66,22 @@ async function main() {
           _count: true,
         }),
         prisma.objectCleanup.count({ where: { environment: env.NODE_ENV, completedAt: null } }),
+        prisma.aIRun.groupBy({
+          by: ['status'],
+          where: { environment: env.NODE_ENV },
+          _count: true,
+        }),
       ]);
       console.log(
         JSON.stringify(
-          { environment: env.NODE_ENV, queues: status, deliveries, reminders, pendingFiles },
+          {
+            environment: env.NODE_ENV,
+            queues: status,
+            deliveries,
+            reminders,
+            pendingFiles,
+            assistantRequests,
+          },
           null,
           2,
         ),

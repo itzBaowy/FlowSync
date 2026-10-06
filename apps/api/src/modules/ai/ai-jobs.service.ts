@@ -56,6 +56,7 @@ export class AIJobsService {
       const context = await this.contexts.build(
         row.conversation.userId,
         row.conversation.projectId,
+        row.kind,
       );
       const output = aiOutputSchema.parse(
         await this.provider.generate({

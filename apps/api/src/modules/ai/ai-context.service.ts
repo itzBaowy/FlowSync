@@ -2,21 +2,32 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PermissionService } from '../authorization/permission.service';
 import { visibleProjects } from '../authorization/scope-visibility';
+import type { AIRequest } from '@flowsync/contracts';
 @Injectable()
 export class AIContextService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
   ) {}
-  async build(userId: string, projectId: string) {
+  async build(userId: string, projectId: string, kind: AIRequest['kind'] = 'SUMMARY') {
     return this.prisma.$transaction(
       async (tx) => {
         const actor = await this.permissions.requireProject(userId, projectId, 'read', tx);
         const now = new Date();
         const [tasks, activity, members, statusCounts] = await Promise.all([
           tx.task.findMany({
-            where: { archivedAt: null, column: { board: { projectId } } },
-            orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }, { id: 'asc' }],
+            where: {
+              archivedAt: null,
+              column: {
+                board: { projectId },
+                ...(kind === 'OVERDUE' ? { kind: { not: 'DONE' as const } } : {}),
+              },
+              ...(kind === 'OVERDUE' ? { dueDate: { lt: now } } : {}),
+            },
+            orderBy:
+              kind === 'OVERDUE'
+                ? [{ priority: 'desc' }, { dueDate: 'asc' }, { id: 'asc' }]
+                : [{ dueDate: 'asc' }, { priority: 'desc' }, { id: 'asc' }],
             take: 40,
             select: {
               id: true,
