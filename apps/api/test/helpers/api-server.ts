@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-export async function startTestApi() {
+export async function startTestApi(overrides: Record<string, string> = {}) {
   const socket = createServer();
   await new Promise<void>((resolve) => socket.listen(0, '127.0.0.1', resolve));
   const address = socket.address();
@@ -10,7 +10,7 @@ export async function startTestApi() {
   const baseUrl = `http://127.0.0.1:${port}/api`;
   const processHandle: ChildProcess = spawn(process.execPath, ['dist/main.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: 'test', API_PORT: String(port) },
+    env: { ...process.env, ...overrides, NODE_ENV: 'test', API_PORT: String(port) },
     stdio: 'ignore',
   });
   for (let index = 0; index < 150; index++) {

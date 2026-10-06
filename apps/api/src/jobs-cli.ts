@@ -12,7 +12,7 @@ async function main() {
     !(args.length === 3 && args[0] === 'retry' && queueKind.safeParse(args[1]).success)
   )
     throw new Error(
-      'Usage: jobs-cli status | jobs-cli retry email|reminders|files|invitations <job-id>',
+      'Usage: jobs-cli status | jobs-cli retry email|reminders|files|invitations|ai <job-id>',
     );
   const env = validateEnvironment(process.env);
   const prisma = new PrismaClient({

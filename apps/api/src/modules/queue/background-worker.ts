@@ -20,10 +20,16 @@ import {
 import { smtpTransport } from './smtp';
 import { UnrecoverableError } from 'bullmq';
 import { jobQueueNames, pruneCompletedJobs } from './job-maintenance';
+import { AIJobsService, aiJob } from '../ai/ai-jobs.service';
+import { AIContextService } from '../ai/ai-context.service';
+import { AI_PROVIDER, createAIProvider, type AIProvider } from '../ai/ai-provider';
 
 @Module({})
 class WorkerContext {}
-export async function startBackgroundWorker(env: Environment) {
+export async function startBackgroundWorker(
+  env: Environment,
+  options: { aiProvider?: AIProvider } = {},
+) {
   const app = await NestFactory.createApplicationContext(
     {
       module: WorkerContext,
@@ -34,7 +40,13 @@ export async function startBackgroundWorker(env: Environment) {
         AuthorizationModule,
         FileCleanupModule,
       ],
-      providers: [NotificationJobsService, NotificationOutboxService],
+      providers: [
+        NotificationJobsService,
+        NotificationOutboxService,
+        AIJobsService,
+        AIContextService,
+        { provide: AI_PROVIDER, useValue: options.aiProvider ?? createAIProvider(env) },
+      ],
     },
     { logger: false },
   );
@@ -42,6 +54,7 @@ export async function startBackgroundWorker(env: Environment) {
   const redis = app.get(RedisService);
   const cleanup = app.get(FileCleanupService);
   const jobs = app.get(NotificationJobsService);
+  const ai = app.get(AIJobsService);
   const transport = smtpTransport(env);
   const connection = { host: env.REDIS_HOST, port: env.REDIS_PORT, password: env.REDIS_PASSWORD };
   const names = jobQueueNames(env.NODE_ENV);
@@ -59,6 +72,7 @@ export async function startBackgroundWorker(env: Environment) {
     reminders: makeQueue(names.reminders, 1000),
     email: makeQueue(names.email, 1000),
     files: makeQueue(names.files, 5000),
+    ai: makeQueue(names.ai, 30000),
   };
   const log = (event: string, fields: Record<string, unknown> = {}) => {
     if (env.NODE_ENV !== 'test')
@@ -76,6 +90,10 @@ export async function startBackgroundWorker(env: Environment) {
     }
   };
   const workers = {
+    ai: new Worker(names.ai, (job: Job) => sanitized(() => ai.run(job.data)), {
+      connection,
+      concurrency: 2,
+    }),
     reminders: new Worker(
       names.reminders,
       (job: Job) =>
@@ -116,6 +134,7 @@ export async function startBackgroundWorker(env: Environment) {
         return;
       const delivery = deliveryJob.safeParse(job.data);
       const reminder = reminderJob.safeParse(job.data);
+      const assistant = aiJob.safeParse(job.data);
       const update =
         kind === 'email' && delivery.success
           ? prisma.notificationDelivery.updateMany({
@@ -136,7 +155,16 @@ export async function startBackgroundWorker(env: Environment) {
                 },
                 data: { status: 'FAILED' },
               })
-            : Promise.resolve();
+            : kind === 'ai' && assistant.success
+              ? prisma.aIRun.updateMany({
+                  where: {
+                    id: assistant.data.runId,
+                    environment: env.NODE_ENV,
+                    status: { in: ['PENDING', 'RUNNING'] },
+                  },
+                  data: { status: 'FAILED', lastError: 'AssistantFailed', leaseId: null },
+                })
+              : Promise.resolve();
       const pending = Promise.resolve(update)
         .catch(() => log('jobs.failure_record_retry'))
         .finally(() => failures.delete(pending));
@@ -196,6 +224,22 @@ export async function startBackgroundWorker(env: Environment) {
       if (stopping) return;
       await queues.files.add('cleanup', { cleanupId: row.id }, { jobId: row.id });
     }
+    const requests = await prisma.aIRun.findMany({
+      where: {
+        environment: env.NODE_ENV,
+        OR: [
+          { status: 'PENDING' },
+          { status: 'RUNNING', claimedAt: { lt: new Date(Date.now() - 90000) } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+      select: { id: true },
+    });
+    for (const row of requests) {
+      if (stopping) return;
+      await queues.ai.add('assistant', { runId: row.id }, { jobId: row.id, attempts: 3 });
+    }
   }
   const pump = () => {
     if (pumping || stopping) return pumping;
@@ -214,6 +258,7 @@ export async function startBackgroundWorker(env: Environment) {
   return {
     queues,
     jobs,
+    ai,
     pump,
     async stop() {
       stopping = true;

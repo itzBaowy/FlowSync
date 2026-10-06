@@ -17,6 +17,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { KanbanModule } from './modules/kanban/kanban.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { AIModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { DiscoveryModule } from './modules/discovery/discovery.module';
     KanbanModule,
     RealtimeModule,
     DiscoveryModule,
+    AIModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpErrorFilter },

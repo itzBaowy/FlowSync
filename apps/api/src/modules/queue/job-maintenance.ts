@@ -2,7 +2,7 @@ import type { Queue } from 'bullmq';
 import { z } from 'zod';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Environment } from '../../config/environment';
-export const queueKind = z.enum(['email', 'reminders', 'files', 'invitations']);
+export const queueKind = z.enum(['email', 'reminders', 'files', 'invitations', 'ai']);
 export type QueueKind = z.infer<typeof queueKind>;
 export function jobQueueNames(environment: string) {
   return {
@@ -10,6 +10,7 @@ export function jobQueueNames(environment: string) {
     email: `flowsync-notification-email-${environment}`,
     files: `flowsync-files-${environment}`,
     invitations: `flowsync-email-${environment}`,
+    ai: `flowsync-ai-${environment}`,
   };
 }
 export async function retryJob(
@@ -75,6 +76,17 @@ export async function retryJob(
     });
     data = { cleanupId: id };
     name = 'cleanup';
+  } else if (kind === 'ai') {
+    const row = await db.aIRun.findFirst({
+      where: { id, environment: env.NODE_ENV, status: { in: ['FAILED', 'PENDING'] } },
+    });
+    if (!row) throw new Error('Assistant request is not retryable in this environment');
+    await db.aIRun.update({
+      where: { id },
+      data: { status: 'PENDING', claimedAt: null, leaseId: null, lastError: null },
+    });
+    data = { runId: id };
+    name = 'assistant';
   } else {
     const row = await db.emailOutbox.findFirst({
       where: {
