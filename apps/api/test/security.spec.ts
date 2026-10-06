@@ -9,6 +9,8 @@ import { TokenService } from '../src/modules/auth/token.service';
 import { validateEnvironment, type Environment } from '../src/config/environment';
 
 const base: Environment = {
+  AI_PROVIDER: 'disabled',
+  AI_MODEL: '',
   EMAIL_ENCRYPTION_KEY: 'c'.repeat(64),
   EMAIL_FROM: 'no-reply@flowsync.local',
   SMTP_URL: 'smtp://localhost:1025',

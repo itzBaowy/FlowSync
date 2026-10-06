@@ -47,3 +47,4 @@ export * from './realtime';
 export * from './notifications';
 export * from './collaboration';
 export * from './discovery';
+export * from './ai';

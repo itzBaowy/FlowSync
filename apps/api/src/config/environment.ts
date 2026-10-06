@@ -39,8 +39,29 @@ export const environmentSchema = z
         .default('smtp://localhost:1025'),
     ),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+    AI_PROVIDER: z.enum(['disabled', 'openai', 'gemini']).default('disabled'),
+    AI_MODEL: z.string().max(100).default(''),
+    OPENAI_API_KEY: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().min(8).optional(),
+    ),
+    GEMINI_API_KEY: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().min(8).optional(),
+    ),
   })
   .superRefine((value, ctx) => {
+    if (value.AI_PROVIDER !== 'disabled') {
+      if (!value.AI_MODEL.trim())
+        ctx.addIssue({ code: 'custom', path: ['AI_MODEL'], message: 'Choose a provider model' });
+      const field = value.AI_PROVIDER === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY';
+      if (!value[field])
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message: 'Selected AI provider requires an API key',
+        });
+    }
     if (value.JWT_ACCESS_SECRET === value.JWT_REFRESH_SECRET) {
       ctx.addIssue({
         code: 'custom',
