@@ -30,6 +30,7 @@ jobs:
       - run: npm test
       - run: npm run test:e2e
       - run: npm run verify:backup
+      - run: npm run test:load
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
