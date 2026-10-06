@@ -25,6 +25,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { AccountControls } from './account-controls';
 import { ActivityFeed } from './activity-feed';
+import { ProjectAssistant } from './project-assistant';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
 import { ScopeMembers } from './scope-members';
 type ScopeKind = 'workspaces' | 'projects';
@@ -373,6 +374,7 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
                     ownerId={'ownerId' in resource ? resource.ownerId : undefined}
                   />
                   {!isWorkspace && <ProjectOverview id={resource.id} />}
+                  {!isWorkspace && <ProjectAssistant key={resource.id} projectId={resource.id} />}
                 </>
               )}
             </div>
