@@ -1,0 +1,75 @@
+name: Publish verified production images
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Public application hostname (without protocol or path)
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: flowsync-release-${{ github.ref }}-${{ inputs.domain }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      domain: ${{ steps.plan.outputs.domain }}
+      image_prefix: ${{ steps.plan.outputs.image_prefix }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 22 }
+      - id: plan
+        run: node scripts/prepare-release.mjs
+        env:
+          DEPLOY_DOMAIN: ${{ inputs.domain }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: { target: [api, web, migrator] }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ needs.prepare.outputs.image_prefix }}-${{ matrix.target }}:${{ needs.prepare.outputs.release_tag }}
+          build-args: NEXT_PUBLIC_API_URL=https://${{ needs.prepare.outputs.domain }}/api
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=flowsync-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=flowsync-${{ matrix.target }}
+      - name: Record release identity
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image_prefix }}-${{ matrix.target }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: printf '%s\n' "${IMAGE}:${RELEASE_TAG}" "${IMAGE}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"
