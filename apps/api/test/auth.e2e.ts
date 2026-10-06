@@ -68,7 +68,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe.sequential('real HTTP authentication + PostgreSQL/Redis/MinIO', () => {
+describe('real HTTP authentication + PostgreSQL/Redis/MinIO', () => {
   it('is ready only when all infrastructure services respond', async () => {
     const response = await request('/health/ready');
     expect(response.status).toBe(200);

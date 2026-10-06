@@ -170,7 +170,7 @@ afterAll(async () => {
   await db.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
   await db.$disconnect();
 });
-describe.sequential('Private queued project assistant', () => {
+describe('Private queued project assistant', () => {
   it('reports disabled configuration without writing a request or calling a provider', async () => {
     const disabled = await startTestApi({ AI_PROVIDER: 'disabled' });
     try {

@@ -61,7 +61,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
   await prisma.$disconnect();
 });
-describe.sequential('Workspace CRUD and private membership', () => {
+describe('Workspace CRUD and private membership', () => {
   it('allows admins to create, blocks members/foreign tenants and validates parent IDs', async () => {
     const body = {
       organizationId: orgs[0],

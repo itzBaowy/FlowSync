@@ -96,7 +96,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: accounts.map((account) => account.id) } } });
   await prisma.$disconnect();
 });
-describe.sequential('Invitation lifecycle, RBAC and real SMTP delivery', () => {
+describe('Invitation lifecycle, RBAC and real SMTP delivery', () => {
   it('binds delivery to the API environment', async () => {
     await worker!.stop();
     worker = undefined;

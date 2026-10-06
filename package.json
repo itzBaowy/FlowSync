@@ -7,10 +7,11 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.12.0 <25",
+    "node": "^22.12.0 || ^24.0.0",
     "npm": ">=10"
   },
   "scripts": {
+    "audit:production": "npm audit --omit=dev --audit-level=moderate",
     "setup": "node scripts/setup.mjs",
     "dev": "npm run build -w @flowsync/contracts && concurrently -k -n contracts,api,web,worker \"npm run dev -w @flowsync/contracts\" \"npm run dev -w @flowsync/api\" \"npm run dev -w @flowsync/web\" \"npm run worker:dev -w @flowsync/api\"",
     "build": "npm run build -w @flowsync/contracts && npm run db:generate && npm run build -w @flowsync/api && npm run build -w @flowsync/web",
@@ -30,6 +31,17 @@
     "worker:dev": "npm run worker:dev -w @flowsync/api",
     "jobs:status": "npm run jobs:status -w @flowsync/api",
     "jobs:retry": "npm run jobs:retry -w @flowsync/api --"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma": {
+      "mysql2": "3.24.5"
+    },
+    "@nestjs/swagger": {
+      "js-yaml": "5.4.3"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

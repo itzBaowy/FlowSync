@@ -72,7 +72,7 @@ beforeAll(async () => {
     await request(`/projects/${projectId}/members`, 0, 'POST', { userId: users[actor]!.id });
   }
 });
-describe.sequential('Global discovery and personal task scope', () => {
+describe('Global discovery and personal task scope', () => {
   let publicTaskId: string;
   const term = `Discovery-${suffix}`;
   it('finds visible tasks, projects, comments and shared-organization members', async () => {
@@ -204,7 +204,7 @@ describe.sequential('Global discovery and personal task scope', () => {
     ).toBe(0);
   });
 });
-describe.sequential('Transactional notification delivery scheduling', () => {
+describe('Transactional notification delivery scheduling', () => {
   let taskId: string;
   let startId: string;
   let doneId: string;
@@ -288,7 +288,7 @@ describe.sequential('Transactional notification delivery scheduling', () => {
     expect(await prisma.dueReminder.count({ where: { taskId } })).toBe(0);
   });
 });
-describe.sequential('Private task attachments and object cleanup', () => {
+describe('Private task attachments and object cleanup', () => {
   let taskId: string;
   let attachmentId: string;
   let objectKey: string;
@@ -390,7 +390,7 @@ describe.sequential('Private task attachments and object cleanup', () => {
     });
   });
 });
-describe.sequential('Comments and private mentions', () => {
+describe('Comments and private mentions', () => {
   let taskId: string;
   let commentId: string;
   it('lets an unassigned project member comment and deduplicates scoped mentions', async () => {
@@ -519,7 +519,7 @@ describe.sequential('Comments and private mentions', () => {
     expect((await request(`/tasks/${taskId}/comments`, 1)).status).toBe(200);
   });
 });
-describe.sequential('Transactional project and task activity', () => {
+describe('Transactional project and task activity', () => {
   let taskId: string;
   let activityBoardId: string;
   it('records task creation with a public actor and scoped pagination', async () => {
@@ -616,7 +616,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
   await prisma.$disconnect();
 });
-describe.sequential('Kanban board boundaries and atomic ordering', () => {
+describe('Kanban board boundaries and atomic ordering', () => {
   it('creates four default columns and protects management and private scope', async () => {
     const body = { projectId, name: 'Delivery' };
     expect((await request('/boards', 1, 'POST', body)).status).toBe(403);
@@ -731,7 +731,7 @@ async function currentTask() {
 async function revision() {
   return (await (await request(`/boards/${boardId}`)).json()).data.revision as number;
 }
-describe.sequential('Task permissions, optimistic concurrency and ranking', () => {
+describe('Task permissions, optimistic concurrency and ranking', () => {
   it('allows project members to create tasks and validates all referenced scopes', async () => {
     const input = {
       columnId: columns[0]!.id,
@@ -937,7 +937,7 @@ describe.sequential('Task permissions, optimistic concurrency and ranking', () =
     expect((await request(`/tasks/${taskId}`, 1)).status).toBe(404);
   });
 });
-describe.sequential('Project labels and versioned task checklists', () => {
+describe('Project labels and versioned task checklists', () => {
   it('scopes label management and assigns multiple labels atomically', async () => {
     const path = `/projects/${projectId}/labels`;
     expect((await request(path, 1, 'POST', { name: 'Bug', color: '#AABBCC' })).status).toBe(403);

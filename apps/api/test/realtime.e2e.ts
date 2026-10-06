@@ -111,7 +111,7 @@ afterAll(async () => {
   await prisma.$disconnect();
   redis.disconnect();
 });
-describe.sequential('Authenticated board subscriptions', () => {
+describe('Authenticated board subscriptions', () => {
   it('rejects absent, tampered, expired tokens and foreign browser origins', async () => {
     await expect(connect('')).rejects.toThrow('UNAUTHORIZED');
     await expect(connect(`${users[0]!.token}broken`)).rejects.toThrow('UNAUTHORIZED');
@@ -173,7 +173,7 @@ function nextEvent(socket: Socket, name: string) {
     });
   });
 }
-describe.sequential('Committed board changes across API replicas', () => {
+describe('Committed board changes across API replicas', () => {
   it('fans out through Redis after commit and emits nothing for rolled back mutations', async () => {
     replica = await startTestApi();
     const local = await connect(users[0]!.token);
@@ -249,7 +249,7 @@ describe.sequential('Committed board changes across API replicas', () => {
     await prisma.projectMember.create({ data: { projectId, userId: users[1]!.id } });
   });
 });
-describe.sequential('Distributed online presence and connection leases', () => {
+describe('Distributed online presence and connection leases', () => {
   it('deduplicates multiple tabs, shares presence between replicas and expires stale leases', async () => {
     connections.forEach((socket) => socket.disconnect());
     await expect
@@ -334,7 +334,7 @@ async function notifyRequest(path: string, actor = 1, method = 'GET', body?: unk
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
-describe.sequential('Transactional and private task notifications', () => {
+describe('Transactional and private task notifications', () => {
   it('persists assignment notifications, fans out per user and rejects stale duplicate updates', async () => {
     const member = await connect(users[1]!.token, process.env.WEB_URL, replica!);
     const event = nextEvent(member, 'notification:changed');

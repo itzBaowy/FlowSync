@@ -76,7 +76,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
   await prisma.$disconnect();
 });
-describe.sequential('Project CRUD, membership and overview', () => {
+describe('Project CRUD, membership and overview', () => {
   it('creates with explicit parent scope and protects ordinary/foreign members', async () => {
     const body = {
       workspaceId: workspaces[0],

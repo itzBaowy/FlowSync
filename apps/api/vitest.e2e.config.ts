@@ -4,6 +4,7 @@ export default defineConfig({
     include: ['test/**/*.e2e.ts'],
     environment: 'node',
     fileParallelism: false,
+    sequence: { concurrent: false },
     testTimeout: 15000,
     hookTimeout: 60000,
   },

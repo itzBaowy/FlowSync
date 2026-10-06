@@ -113,7 +113,7 @@ afterAll(async () => {
   await db.user.deleteMany({ where: { id: { in: userIds } } });
   await db.$disconnect();
 });
-describe.sequential('Tenant-scoped and bounded AI context', () => {
+describe('Tenant-scoped and bounded AI context', () => {
   it('contains current project activity/tasks without emails, credentials or another tenant', async () => {
     const context = await contexts.build(userIds[1]!, projectId);
     expect(context.tasks.map((row) => row.id)).toEqual([taskId]);

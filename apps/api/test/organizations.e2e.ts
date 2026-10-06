@@ -46,7 +46,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: accounts.map((account) => account.id) } } });
   await prisma.$disconnect();
 });
-describe.sequential('Organization CRUD and tenant boundaries', () => {
+describe('Organization CRUD and tenant boundaries', () => {
   it('creates an organization with exactly one OWNER membership', async () => {
     const response = await request('/organizations', 0, 'POST', {
       name: 'Test team',

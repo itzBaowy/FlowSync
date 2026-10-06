@@ -173,7 +173,7 @@ afterAll(async () => {
   storage.destroy();
   await prisma.$disconnect();
 });
-describe.sequential('Durable queues with real Redis, SMTP and object storage', () => {
+describe('Durable queues with real Redis, SMTP and object storage', () => {
   it('creates one due notification/email and sends a realtime invalidation across worker/API', async () => {
     const target = await task();
     const reminder = await prisma.dueReminder.create({
