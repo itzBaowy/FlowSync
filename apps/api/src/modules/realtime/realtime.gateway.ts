@@ -117,6 +117,17 @@ export class RealtimeGateway
         if (userIds.includes(socket.data.userId) && socket.data.expiresAt > Date.now())
           socket.emit('notification:changed', {});
     };
+    const channel = `${this.prefix}:notifications`;
+    this.sub.on('message', (received: string, message: string) => {
+      if (received !== channel || message.length > 20000) return;
+      try {
+        const ids = z.array(z.string().uuid()).max(500).safeParse(JSON.parse(message));
+        if (ids.success) notify(ids.data);
+      } catch {
+        // Only validated recipient IDs from workers reach connected clients.
+      }
+    });
+    void this.sub.subscribe(channel).catch(() => {});
     namespace.on('internal:notifications', (input: unknown) => {
       const ids = z.array(z.string().uuid()).max(500).safeParse(input);
       if (ids.success) notify(ids.data);
