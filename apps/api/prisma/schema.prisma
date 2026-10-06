@@ -467,8 +467,40 @@ model AIConversation {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  AIMessage[]
+  run       AIRun?
   @@index([projectId, userId, createdAt])
   @@index([userId])
+}
+
+enum AIRequestKind {
+  SUMMARY
+  OVERDUE
+  MEETING_NOTES
+}
+enum AIRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+model AIRun {
+  id                 String @id @default(uuid()) @db.Uuid
+  conversationId     String @unique @db.Uuid
+  environment        String @db.VarChar(20)
+  kind               AIRequestKind
+  status             AIRunStatus @default(PENDING)
+  attempts           Int @default(0)
+  leaseId            String? @db.Uuid
+  claimedAt          DateTime?
+  completedAt        DateTime?
+  output             Json?
+  lastError          String? @db.VarChar(80)
+  confirmedAt        DateTime?
+  confirmedTaskIds   Json?
+  createdAt          DateTime @default(now())
+  conversation       AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@index([environment, status, createdAt])
 }
 
 model AIMessage {
