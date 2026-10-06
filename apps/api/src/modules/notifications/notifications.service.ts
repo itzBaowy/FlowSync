@@ -6,6 +6,7 @@ import { PaginatedResult } from '../../common/pagination';
 import { PermissionService } from '../authorization/permission.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { NotificationOutboxService } from '../queue/notification-outbox.service';
+import { visibleNotifications } from '../authorization/scope-visibility';
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -15,30 +16,7 @@ export class NotificationsService {
     private readonly outbox: NotificationOutboxService,
   ) {}
   visible(userId: string): Prisma.NotificationWhereInput {
-    return {
-      userId,
-      task: {
-        is: {
-          column: {
-            board: {
-              project: {
-                workspace: { organization: { members: { some: { userId } } } },
-                OR: [
-                  {
-                    workspace: {
-                      organization: {
-                        members: { some: { userId, role: { in: ['OWNER', 'ADMIN'] } } },
-                      },
-                    },
-                  },
-                  { members: { some: { userId } }, workspace: { members: { some: { userId } } } },
-                ],
-              },
-            },
-          },
-        },
-      },
-    };
+    return visibleNotifications(userId);
   }
   async list(userId: string, query: NotificationList) {
     const where: Prisma.NotificationWhereInput = {
@@ -56,10 +34,14 @@ export class NotificationsService {
           select: {
             id: true,
             taskId: true,
+            projectId: true,
+            workspaceId: true,
             type: true,
             title: true,
             readAt: true,
             createdAt: true,
+            project: { select: { workspaceId: true } },
+            workspace: { select: { organizationId: true } },
             task: {
               select: {
                 column: { select: { boardId: true, board: { select: { projectId: true } } } },
@@ -72,10 +54,15 @@ export class NotificationsService {
       { isolationLevel: 'RepeatableRead' },
     );
     return new PaginatedResult(
-      rows.map(({ task, ...row }) => ({
+      rows.map(({ task, project, workspace, ...row }) => ({
         ...row,
-        boardId: task!.column.boardId,
-        projectId: task!.column.board.projectId,
+        boardId: task?.column.boardId ?? null,
+        projectId: task?.column.board.projectId ?? row.projectId,
+        href: task
+          ? `/boards?projectId=${task.column.board.projectId}&id=${task.column.boardId}&taskId=${row.taskId}`
+          : project
+            ? `/projects?workspaceId=${project.workspaceId}&id=${row.projectId}`
+            : `/workspaces?organizationId=${workspace!.organizationId}&id=${row.workspaceId}`,
         readAt: row.readAt?.toISOString() ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
@@ -95,12 +82,16 @@ export class NotificationsService {
     const initial = await this.prisma.notification.findFirst({
       where: { ...this.visible(userId), id },
       select: {
+        projectId: true,
+        workspaceId: true,
         task: { select: { column: { select: { board: { select: { projectId: true } } } } } },
       },
     });
-    if (!initial?.task) throw new NotFoundException('Notification not found');
+    if (!initial) throw new NotFoundException('Notification not found');
     await this.prisma.$transaction(async (tx) => {
-      await this.permissions.lockProject(tx, initial.task!.column.board.projectId);
+      const projectId = initial.task?.column.board.projectId ?? initial.projectId;
+      if (projectId) await this.permissions.lockProject(tx, projectId);
+      else if (initial.workspaceId) await this.permissions.lockWorkspace(tx, initial.workspaceId);
       if (
         !(await tx.notification.findFirst({
           where: { ...this.visible(userId), id },
@@ -194,5 +185,35 @@ export class NotificationsService {
   }
   afterCommit(userIds: string[]) {
     return this.events.notificationsChanged(userIds);
+  }
+  async recordScope(
+    tx: Prisma.TransactionClient,
+    actorId: string,
+    targetId: string,
+    scope: { projectId: string; name: string } | { workspaceId: string; name: string },
+  ) {
+    if (actorId === targetId) return;
+    if ('projectId' in scope)
+      await this.permissions.requireProject(targetId, scope.projectId, 'read', tx);
+    else await this.permissions.requireWorkspace(targetId, scope.workspaceId, 'read', tx);
+    const actor = await tx.user.findUniqueOrThrow({
+      where: { id: actorId },
+      select: { name: true },
+    });
+    const notification = await tx.notification.create({
+      data: {
+        userId: targetId,
+        ...('projectId' in scope
+          ? { projectId: scope.projectId, type: 'PROJECT_INVITE' as const }
+          : { workspaceId: scope.workspaceId, type: 'WORKSPACE_INVITE' as const }),
+        title: [
+          ...`${actor.name} added you to ${'projectId' in scope ? 'project' : 'workspace'} "${scope.name}"`,
+        ]
+          .slice(0, 240)
+          .join(''),
+      },
+      select: { id: true, type: true },
+    });
+    await this.outbox.emails(tx, [notification]);
   }
 }

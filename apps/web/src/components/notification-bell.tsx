@@ -131,14 +131,18 @@ export function NotificationBell() {
             <div className="flex items-center justify-between gap-2">
               <Link
                 className="text-primary hover:underline"
-                href={`/boards?projectId=${notification.projectId}&id=${notification.boardId}&taskId=${notification.taskId}`}
+                href={notification.href}
                 onClick={() => {
                   if (!notification.readAt)
                     action.mutate({ notificationId: notification.id, read: true });
                   ref.current?.hidePopover();
                 }}
               >
-                Open task
+                {notification.taskId
+                  ? 'Open task'
+                  : notification.projectId
+                    ? 'Open project'
+                    : 'Open workspace'}
               </Link>
               <Button
                 variant="ghost"

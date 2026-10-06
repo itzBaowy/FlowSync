@@ -6,7 +6,7 @@ import type { Transporter } from 'nodemailer';
 import type { Environment } from '../../config/environment';
 import { PrismaService } from '../../database/prisma.service';
 import { PermissionService } from '../authorization/permission.service';
-import { visibleTasks } from '../authorization/scope-visibility';
+import { visibleTasks, visibleNotifications } from '../authorization/scope-visibility';
 import { NotificationOutboxService } from './notification-outbox.service';
 
 export const deliveryJob = z.object({ notificationId: z.string().uuid() }).strict();
@@ -94,11 +94,12 @@ export class NotificationJobsService {
     // Check current scope at delivery time, even when a job was queued before revocation.
     const notification = await this.prisma.notification.findFirst({
       where: {
+        ...visibleNotifications(delivery.notification.userId),
         id: notificationId,
-        userId: delivery.notification.userId,
-        task: { is: visibleTasks(delivery.notification.userId) },
       },
       include: {
+        project: { select: { workspaceId: true } },
+        workspace: { select: { organizationId: true } },
         task: {
           select: {
             id: true,
@@ -107,7 +108,7 @@ export class NotificationJobsService {
         },
       },
     });
-    if (!notification?.task || notification.readAt) {
+    if (!notification || notification.readAt) {
       await this.prisma.notificationDelivery.update({
         where: { notificationId },
         data: { status: 'SKIPPED' },
@@ -118,10 +119,20 @@ export class NotificationJobsService {
       where: { notificationId },
       data: { attempts: { increment: 1 } },
     });
-    const link = new URL('/boards', this.config.get('WEB_URL', { infer: true }));
-    link.searchParams.set('projectId', notification.task.column.board.projectId);
-    link.searchParams.set('id', notification.task.column.boardId);
-    link.searchParams.set('taskId', notification.task.id);
+    const link = new URL(
+      notification.task ? '/boards' : notification.projectId ? '/projects' : '/workspaces',
+      this.config.get('WEB_URL', { infer: true }),
+    );
+    if (notification.task) {
+      link.searchParams.set('projectId', notification.task.column.board.projectId);
+      link.searchParams.set('id', notification.task.column.boardId);
+      link.searchParams.set('taskId', notification.task.id);
+    } else {
+      link.searchParams.set('id', notification.projectId ?? notification.workspaceId!);
+      if (notification.project)
+        link.searchParams.set('workspaceId', notification.project.workspaceId);
+      else link.searchParams.set('organizationId', notification.workspace!.organizationId);
+    }
     await transport.sendMail({
       from: this.config.get('EMAIL_FROM', { infer: true }),
       to: delivery.notification.user.email,

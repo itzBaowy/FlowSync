@@ -15,6 +15,7 @@ import {
 import { io, type Socket } from 'socket.io-client';
 import type { Job } from 'bullmq';
 import { retryJob, pruneCompletedJobs } from '../src/modules/queue/job-maintenance';
+import { notificationSchema } from '@flowsync/contracts';
 // Tests use the compiled Nest providers so TypeScript decorator metadata matches production.
 const { startBackgroundWorker } = createRequire(`${process.cwd()}/test/background-jobs.e2e.ts`)(
   '../dist/modules/queue/background-worker.js',
@@ -378,6 +379,88 @@ describe.sequential('Durable queues with real Redis, SMTP and object storage', (
         where: { id: { in: rows.slice(1).map((row) => row.id) } },
       }),
     ).toBe(2);
+  });
+  it('emits private workspace/project invitations and hides them after membership revocation', async () => {
+    async function request(path: string, actor = 0, method = 'GET', body?: unknown) {
+      return fetch(`${api.baseUrl}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accounts[actor]!.token}`,
+          'Content-Type': 'application/json',
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    }
+    expect(
+      (await request(`/workspaces/${workspaceId}/members/${accounts[1]!.id}`, 0, 'DELETE')).status,
+    ).toBe(200);
+    const before = notificationsChanged;
+    expect(
+      (await request(`/workspaces/${workspaceId}/members`, 0, 'POST', { userId: accounts[1]!.id }))
+        .status,
+    ).toBe(201);
+    expect(
+      (await request(`/projects/${projectId}/members`, 0, 'POST', { userId: accounts[1]!.id }))
+        .status,
+    ).toBe(201);
+    expect(
+      (await request(`/projects/${projectId}/members`, 0, 'POST', { userId: accounts[1]!.id }))
+        .status,
+    ).toBe(409);
+    await until(async () => notificationsChanged >= before + 2);
+    const result = await (await request('/notifications?limit=100', 1)).json();
+    const rows = result.data.map((row: unknown) => notificationSchema.parse(row));
+    const project = rows.find((row: { type: string }) => row.type === 'PROJECT_INVITE')!;
+    const workspace = rows.find((row: { type: string }) => row.type === 'WORKSPACE_INVITE')!;
+    expect(project.href).toBe(`/projects?workspaceId=${workspaceId}&id=${projectId}`);
+    expect(workspace.href).toBe(`/workspaces?organizationId=${organizationId}&id=${workspaceId}`);
+    expect(project.boardId).toBeNull();
+    expect(await prisma.notification.count({ where: { projectId, type: 'PROJECT_INVITE' } })).toBe(
+      1,
+    );
+    expect(
+      await prisma.notificationDelivery.count({
+        where: { notificationId: { in: [project.id, workspace.id] }, environment: 'test' },
+      }),
+    ).toBe(2);
+    expect(
+      (await request(`/notifications/${project.id}/read`, 0, 'PATCH', { read: true })).status,
+    ).toBe(404);
+    expect(
+      (await request(`/notifications/${workspace.id}/read`, 1, 'PATCH', { read: true })).status,
+    ).toBe(200);
+    await worker!.pump();
+    await until(
+      async () =>
+        (await prisma.notificationDelivery.count({
+          where: {
+            notificationId: { in: [project.id, workspace.id] },
+            status: { in: ['SENT', 'SKIPPED'] },
+          },
+        })) === 2,
+    );
+    expect(
+      (await request(`/projects/${projectId}/members/${accounts[1]!.id}`, 0, 'DELETE')).status,
+    ).toBe(200);
+    expect(
+      (await request(`/notifications/${project.id}/read`, 1, 'PATCH', { read: true })).status,
+    ).toBe(404);
+    expect(
+      (await request(`/notifications/${workspace.id}/read`, 1, 'PATCH', { read: true })).status,
+    ).toBe(200);
+    expect(
+      (await request(`/workspaces/${workspaceId}/members/${accounts[1]!.id}`, 0, 'DELETE')).status,
+    ).toBe(200);
+    expect(
+      (await request(`/notifications/${workspace.id}/read`, 1, 'PATCH', { read: true })).status,
+    ).toBe(404);
+    expect((await (await request('/notifications', 1)).json()).meta.total).toBe(0);
+    const mail = await (
+      await fetch(
+        `${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${accounts[1]!.email}`)}`,
+      )
+    ).json();
+    messages.push(...mail.messages.map((message: { ID: string }) => message.ID));
   });
   it('removes abandoned objects but preserves keys referenced by committed attachments', async () => {
     const target = await task();

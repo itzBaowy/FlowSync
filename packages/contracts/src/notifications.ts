@@ -17,8 +17,10 @@ export const notificationReadSchema = z.object({ read: z.boolean() }).strict();
 export const notificationSchema = z.object({
   id: z.string().uuid(),
   taskId: z.string().uuid().nullable(),
-  boardId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  boardId: z.string().uuid().nullable(),
+  projectId: z.string().uuid().nullable(),
+  workspaceId: z.string().uuid().nullable(),
+  href: z.string().startsWith('/'),
   type: notificationTypeSchema,
   title: z.string(),
   readAt: z.string().datetime().nullable(),

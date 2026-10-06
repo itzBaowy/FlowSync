@@ -177,6 +177,7 @@ model Workspace {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   members        WorkspaceMember[]
   projects       Project[]
+  notifications  Notification[]
   @@unique([organizationId, slug])
 }
 
@@ -208,6 +209,7 @@ model Project {
   labels      Label[]
   activities  Activity[]
   conversations AIConversation[]
+  notifications Notification[]
   @@index([workspaceId, status])
   @@index([ownerId])
 }
@@ -366,6 +368,8 @@ model Notification {
   userId    String @db.Uuid
   taskId    String? @db.Uuid
   type      NotificationType
+  projectId String? @db.Uuid
+  workspaceId String? @db.Uuid
   title     String @db.VarChar(240)
   body      String?
   readAt    DateTime?
@@ -373,9 +377,13 @@ model Notification {
   dedupeKey String? @unique @db.VarChar(200)
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   task      Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   delivery  NotificationDelivery?
   @@index([userId, readAt, createdAt])
   @@index([taskId])
+  @@index([projectId])
+  @@index([workspaceId])
 }
 
 enum DeliveryStatus {

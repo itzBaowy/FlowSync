@@ -16,6 +16,7 @@ import { PermissionService } from '../authorization/permission.service';
 import { managesOrganizationScope } from '../authorization/scope.policy';
 import { PaginatedResult } from '../../common/pagination';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export const workspaceView = (row: Workspace, canManage: boolean) => ({
   id: row.id,
@@ -39,6 +40,7 @@ export class WorkspacesService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly events: RealtimeEventsService,
+    private readonly notifications: NotificationsService,
   ) {}
   private async mutate<T>(
     id: string,
@@ -169,8 +171,8 @@ export class WorkspacesService {
       total,
     );
   }
-  addMember(userId: string, id: string, targetId: string) {
-    return this.mutate(id, userId, async (tx) => {
+  async addMember(userId: string, id: string, targetId: string) {
+    const result = await this.mutate(id, userId, async (tx) => {
       const workspace = await tx.workspace.findUniqueOrThrow({ where: { id } });
       if (
         !(await tx.organizationMember.findUnique({
@@ -184,8 +186,14 @@ export class WorkspacesService {
         data: { workspaceId: id, userId: targetId },
         select: publicMemberSelect,
       });
+      await this.notifications.recordScope(tx, userId, targetId, {
+        workspaceId: id,
+        name: workspace.name,
+      });
       return { ...row, joinedAt: row.joinedAt.toISOString() };
     });
+    await this.notifications.afterCommit([targetId]);
+    return result;
   }
   removeMember(userId: string, id: string, targetId: string) {
     return this.mutate(id, userId, async (tx) => {

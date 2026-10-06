@@ -4,8 +4,9 @@ import { AuthorizationModule } from '../authorization/authorization.module';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
-  imports: [AuthModule, AuthorizationModule, RealtimeModule],
+  imports: [AuthModule, AuthorizationModule, RealtimeModule, NotificationsModule],
   controllers: [ProjectsController],
   providers: [ProjectsService],
 })
