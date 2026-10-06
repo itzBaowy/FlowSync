@@ -210,55 +210,52 @@ export class TasksService {
     )
       throw new BadRequestException('Labels must belong to this project');
   }
+  async createInTransaction(
+    tx: Prisma.TransactionClient,
+    actor: BoardActor,
+    userId: string,
+    input: TaskInput,
+  ) {
+    if (!(await tx.column.findFirst({ where: { id: input.columnId, boardId: actor.board.id } })))
+      throw new NotFoundException('Column not found');
+    await this.validateLinks(tx, actor, input.assigneeIds, input.labelIds);
+    if ((await tx.task.count({ where: { columnId: input.columnId } })) >= MAX_COLUMN_TASKS)
+      throw new ConflictException('This column reached its task limit');
+    const last = await tx.task.findFirst({
+      where: { columnId: input.columnId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+    const { assigneeIds, labelIds, ...fields } = input;
+    const row = await tx.task.create({
+      data: {
+        ...fields,
+        createdById: userId,
+        position: (last?.position ?? new Prisma.Decimal(0)).plus(1024),
+        assignees: { create: assigneeIds.map((id) => ({ userId: id })) },
+        labels: { create: labelIds.map((id) => ({ labelId: id })) },
+      },
+      include: taskInclude,
+    });
+    await this.notifications.record(tx, userId, row.id, assigneeIds, 'TASK_ASSIGNED', row.title);
+    await this.outbox.reminder(tx, row.id, row.dueDate, row.column.kind === 'DONE');
+    await this.activity.record(tx, {
+      organizationId: actor.workspace.organizationId,
+      projectId: actor.project.id,
+      taskId: row.id,
+      actorId: userId,
+      action: 'TASK_CREATED',
+      metadata: { title: row.title, assigneeIds },
+    });
+    return taskView(row, userId, actor.canManage);
+  }
   async create(userId: string, input: TaskInput) {
     const column = await this.access.column(userId, input.columnId);
     const result = await this.access.mutate(
       userId,
       column.boardId,
       'read',
-      async (tx, actor) => {
-        if (
-          !(await tx.column.findFirst({ where: { id: input.columnId, boardId: actor.board.id } }))
-        )
-          throw new NotFoundException('Column not found');
-        await this.validateLinks(tx, actor, input.assigneeIds, input.labelIds);
-        if ((await tx.task.count({ where: { columnId: input.columnId } })) >= MAX_COLUMN_TASKS)
-          throw new ConflictException('This column reached its task limit');
-        const last = await tx.task.findFirst({
-          where: { columnId: input.columnId },
-          orderBy: { position: 'desc' },
-          select: { position: true },
-        });
-        const { assigneeIds, labelIds, ...fields } = input;
-        const row = await tx.task.create({
-          data: {
-            ...fields,
-            createdById: userId,
-            position: (last?.position ?? new Prisma.Decimal(0)).plus(1024),
-            assignees: { create: assigneeIds.map((id) => ({ userId: id })) },
-            labels: { create: labelIds.map((id) => ({ labelId: id })) },
-          },
-          include: taskInclude,
-        });
-        await this.notifications.record(
-          tx,
-          userId,
-          row.id,
-          assigneeIds,
-          'TASK_ASSIGNED',
-          row.title,
-        );
-        await this.outbox.reminder(tx, row.id, row.dueDate, row.column.kind === 'DONE');
-        await this.activity.record(tx, {
-          organizationId: actor.workspace.organizationId,
-          projectId: actor.project.id,
-          taskId: row.id,
-          actorId: userId,
-          action: 'TASK_CREATED',
-          metadata: { title: row.title, assigneeIds },
-        });
-        return taskView(row, userId, actor.canManage);
-      },
+      (tx, actor) => this.createInTransaction(tx, actor, userId, input),
       { activity: false },
     );
     await this.notifications.afterCommit(input.assigneeIds.filter((id) => id !== userId));

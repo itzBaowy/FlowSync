@@ -13,6 +13,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import {
   aiRequestSchema,
+  aiConfirmSchema,
+  type AIConfirm,
   listQuerySchema,
   type AIRequest,
   type ListQuery,
@@ -59,5 +61,15 @@ export class AIController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.ai.get(request.userId!, projectId, id);
+  }
+  @Post('requests/:id/confirm')
+  @ApiZodBody(aiConfirmSchema)
+  confirm(
+    @Req() request: AuthenticatedRequest,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(aiConfirmSchema)) input: AIConfirm,
+  ) {
+    return this.ai.confirm(request.userId, projectId, id, input);
   }
 }

@@ -160,9 +160,9 @@ afterAll(async () => {
   if (projectId) {
     await db.aIConversation.deleteMany({ where: { projectId } });
     await db.activity.deleteMany({ where: { organizationId } });
-    await db.task.deleteMany({ where: { columnId } });
-    await db.column.deleteMany({ where: { id: columnId } });
-    await db.board.deleteMany({ where: { projectId } });
+    await db.task.deleteMany({ where: { column: { board: { project: { workspaceId } } } } });
+    await db.column.deleteMany({ where: { board: { project: { workspaceId } } } });
+    await db.board.deleteMany({ where: { project: { workspaceId } } });
     await db.project.deleteMany({ where: scope });
     await db.workspace.deleteMany({ where: { id: workspaceId } });
     await db.organization.deleteMany({ where: { id: organizationId } });
@@ -282,5 +282,102 @@ describe.sequential('Private queued project assistant', () => {
     expect(notesId).toBeTruthy();
     // Both adapters use the same error contract; no external requests are made in this suite.
     expect(new AIProviderError(false).message).toBe('AI provider unavailable');
+  });
+  it('requires explicit confirmation and rejects summaries, other users and foreign columns', async () => {
+    const path = `/projects/${projectId}/ai/requests/${notesId}/confirm`;
+    const input = { confirmed: true, columnId, suggestionIndexes: [0] };
+    expect((await request(path, 0, 'POST', { ...input, confirmed: false })).status).toBe(400);
+    expect((await request(path, 0, 'POST', { ...input, execute: true })).status).toBe(400);
+    expect((await request(path, 1, 'POST', input)).status).toBe(404);
+    expect(
+      (await request(`/projects/${projectId}/ai/requests/${summaryId}/confirm`, 0, 'POST', input))
+        .status,
+    ).toBe(409);
+    const project = await db.project.create({
+      data: { workspaceId, name: 'Another private project', ownerId: users[0]!.id },
+    });
+    const board = await db.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Other',
+        columns: { create: { name: 'TODO', position: 0 } },
+      },
+      include: { columns: true },
+    });
+    expect(
+      (await request(path, 0, 'POST', { ...input, columnId: board.columns[0]!.id })).status,
+    ).toBe(404);
+    expect((await db.aIRun.findUniqueOrThrow({ where: { id: notesId } })).confirmedAt).toBeNull();
+  });
+  it('rolls back the entire selected batch when an assignee loses membership after preview', async () => {
+    const run = await db.aIRun.findUniqueOrThrow({ where: { id: notesId } });
+    const output = aiRunSchema.parse(
+      (await (await request(`/projects/${projectId}/ai/requests/${notesId}`)).json()).data,
+    ).output!;
+    await db.aIRun.update({
+      where: { id: run.id },
+      data: {
+        output: {
+          ...output,
+          suggestions: [
+            { ...output.suggestions[0]!, title: 'Unassigned first suggestion', assigneeIds: [] },
+            output.suggestions[0]!,
+          ],
+        },
+      },
+    });
+    const before = await db.task.count({ where: { columnId } });
+    const board = await db.column.findUniqueOrThrow({
+      where: { id: columnId },
+      include: { board: true },
+    });
+    const activityBefore = await db.activity.count({ where: { projectId } });
+    await db.projectMember.delete({
+      where: { projectId_userId: { projectId, userId: users[1]!.id } },
+    });
+    try {
+      const response = await request(
+        `/projects/${projectId}/ai/requests/${notesId}/confirm`,
+        0,
+        'POST',
+        {
+          confirmed: true,
+          columnId,
+          suggestionIndexes: [0, 1],
+        },
+      );
+      expect(response.status).toBe(400);
+      expect(await db.task.count({ where: { columnId } })).toBe(before);
+      expect(await db.activity.count({ where: { projectId } })).toBe(activityBefore);
+      expect((await db.board.findUniqueOrThrow({ where: { id: board.boardId } })).revision).toBe(
+        board.board.revision,
+      );
+      expect((await db.aIRun.findUniqueOrThrow({ where: { id: notesId } })).confirmedAt).toBeNull();
+    } finally {
+      await db.projectMember.create({ data: { projectId, userId: users[1]!.id } });
+    }
+  });
+  it('creates selected tasks atomically and confirms once under concurrent requests', async () => {
+    const before = await db.task.count({ where: { columnId } });
+    const input = { confirmed: true, columnId, suggestionIndexes: [0, 1] };
+    const path = `/projects/${projectId}/ai/requests/${notesId}/confirm`;
+    const [first, duplicate] = await Promise.all([
+      request(path, 0, 'POST', input),
+      request(path, 0, 'POST', input),
+    ]);
+    expect([first.status, duplicate.status]).toEqual([201, 201]);
+    const a = aiRunSchema.parse((await first.json()).data);
+    const b = aiRunSchema.parse((await duplicate.json()).data);
+    expect(a.confirmedTaskIds).toHaveLength(2);
+    expect(b.confirmedTaskIds).toEqual(a.confirmedTaskIds);
+    expect(await db.task.count({ where: { columnId } })).toBe(before + 2);
+    expect(await db.activity.count({ where: { projectId, action: 'AI_TASKS_CREATED' } })).toBe(1);
+    expect(
+      await db.notification.count({
+        where: { taskId: { in: a.confirmedTaskIds }, type: 'TASK_ASSIGNED' },
+      }),
+    ).toBe(1);
+    expect((await request(path, 0, 'POST', input)).status).toBe(201);
+    expect(await db.task.count({ where: { columnId } })).toBe(before + 2);
   });
 });

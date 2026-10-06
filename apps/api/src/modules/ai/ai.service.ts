@@ -5,12 +5,22 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { aiOutputSchema, type AIRequest, type ListQuery } from '@flowsync/contracts';
+import {
+  aiOutputSchema,
+  taskInputSchema,
+  type AIConfirm,
+  type AIRequest,
+  type ListQuery,
+} from '@flowsync/contracts';
 import type { Environment } from '../../config/environment';
 import { PrismaService } from '../../database/prisma.service';
 import { PermissionService } from '../authorization/permission.service';
 import type { Prisma } from '../../generated/prisma/client';
 import { PaginatedResult } from '../../common/pagination';
+import { TasksService } from '../kanban/tasks.service';
+import { KanbanAccessService } from '../kanban/kanban-access.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityService } from '../activity/activity.service';
 export const aiRunInclude = {
   conversation: {
     include: {
@@ -43,6 +53,10 @@ export class AIService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly config: ConfigService<Environment, true>,
+    private readonly tasks: TasksService,
+    private readonly access: KanbanAccessService,
+    private readonly notifications: NotificationsService,
+    private readonly activity: ActivityService,
   ) {}
   async availability(userId: string, projectId: string) {
     await this.permissions.requireProject(userId, projectId, 'read');
@@ -110,5 +124,66 @@ export class AIService {
       { isolationLevel: 'RepeatableRead' },
     );
     return new PaginatedResult(rows.map(aiRunView), query.page, query.limit, total);
+  }
+  async confirm(userId: string, projectId: string, id: string, input: AIConfirm) {
+    await this.permissions.requireProject(userId, projectId, 'read');
+    const initial = await this.prisma.aIRun.findFirst({
+      where: { id, conversation: { userId, projectId } },
+      include: aiRunInclude,
+    });
+    if (!initial) throw new NotFoundException('Assistant request not found');
+    if (initial.status !== 'COMPLETED' || initial.kind !== 'MEETING_NOTES')
+      throw new ConflictException('Only a completed meeting-note preview can create tasks');
+    const column = await this.access.column(userId, input.columnId);
+    const board = await this.access.board(userId, column.boardId, 'read');
+    if (board.project.id !== projectId) throw new NotFoundException('Column not found');
+    const recipients = new Set<string>();
+    const result = await this.access.mutate(
+      userId,
+      column.boardId,
+      'read',
+      async (tx, actor) => {
+        if (actor.project.id !== projectId) throw new NotFoundException('Project not found');
+        const run = await tx.aIRun.findFirst({
+          where: { id, status: 'COMPLETED', conversation: { userId, projectId } },
+          include: aiRunInclude,
+        });
+        if (!run) throw new ConflictException('Assistant preview changed');
+        if (run.confirmedAt) return aiRunView(run);
+        const output = aiOutputSchema.parse(run.output);
+        if (input.suggestionIndexes.some((index) => !output.suggestions[index]))
+          throw new ConflictException('Choose an existing suggestion');
+        const taskIds: string[] = [];
+        for (const index of input.suggestionIndexes) {
+          const suggestion = output.suggestions[index]!;
+          const task = await this.tasks.createInTransaction(
+            tx,
+            actor,
+            userId,
+            taskInputSchema.parse({ ...suggestion, columnId: input.columnId, labelIds: [] }),
+          );
+          taskIds.push(task.id);
+          for (const assignee of suggestion.assigneeIds)
+            if (assignee !== userId) recipients.add(assignee);
+        }
+        await this.activity.record(tx, {
+          organizationId: actor.workspace.organizationId,
+          projectId,
+          actorId: userId,
+          action: 'AI_TASKS_CREATED',
+          metadata: { runId: id, taskIds, count: taskIds.length },
+        });
+        return aiRunView(
+          await tx.aIRun.update({
+            where: { id },
+            data: { confirmedAt: new Date(), confirmedTaskIds: taskIds },
+            include: aiRunInclude,
+          }),
+        );
+      },
+      { activity: false },
+    );
+    await this.notifications.afterCommit([...recipients]);
+    return result;
   }
 }

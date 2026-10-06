@@ -42,5 +42,6 @@ import { StorageModule } from '../files/storage.module';
     CommentsService,
     AttachmentsService,
   ],
+  exports: [TasksService, KanbanAccessService],
 })
 export class KanbanModule {}
