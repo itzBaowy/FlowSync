@@ -8,6 +8,11 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 let accessToken: string | null = null;
 let pendingRefresh: Promise<AuthSession> | null = null;
+async function withAuthCookieLock<T>(action: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks)
+    return navigator.locks.request(`flowsync-auth-cookie:${API_URL}`, action);
+  return action();
+}
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -42,16 +47,18 @@ async function decode<T>(response: Response): Promise<T> {
 }
 export async function refreshSession(): Promise<AuthSession> {
   if (!pendingRefresh) {
-    pendingRefresh = fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
-      .then(decode<unknown>)
-      .then((data) => {
-        const session = authSessionSchema.parse(data);
-        setAccessToken(session.accessToken);
-        return session;
-      })
-      .finally(() => {
-        pendingRefresh = null;
+    pendingRefresh = withAuthCookieLock(async () => {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        signal: AbortSignal.timeout(15000),
       });
+      const session = authSessionSchema.parse(await decode<unknown>(response));
+      setAccessToken(session.accessToken);
+      return session;
+    }).finally(() => {
+      pendingRefresh = null;
+    });
   }
   return pendingRefresh;
 }
@@ -64,11 +71,17 @@ export async function apiEnvelope<T>(
   if (options.body && !(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  const changesAuthCookie =
+    options.method?.toUpperCase() === 'POST' &&
+    ['/auth/login', '/auth/register', '/auth/logout'].includes(path);
+  const send = () =>
+    fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+      signal: options.signal ?? (changesAuthCookie ? AbortSignal.timeout(15000) : undefined),
+    });
+  const response = await (changesAuthCookie ? withAuthCookieLock(send) : send());
   if (response.status === 401 && retry && !path.startsWith('/auth/')) {
     await refreshSession();
     return apiEnvelope<T>(path, options, false);

@@ -159,7 +159,7 @@ Success: `{ "data": ..., "meta": {} }`. Lists accept `page`, `limit`, `search`, 
 
 OWNER controls settings, roles, removal, deletion and ownership. ADMIN can invite MEMBER only when the organization allows admin invitations; OWNER may invite ADMIN. MEMBER reads organization/member information. Unknown or foreign organization resources return 404. Role changes are checked from the database on each action.
 
-Cookie flow assumes frontend/API on the same site (localhost on separate ports locally; shared parent domain or reverse proxy in production). Cross-site deployments need an explicit SameSite/CSRF design. Logout revokes refresh immediately; already-issued access JWT remains valid up to 15 minutes. Same-browser concurrent refresh is serialized in one tab; coordination across tabs is a documented hardening item.
+Cookie flow assumes frontend/API on the same site (localhost on separate ports locally; shared parent domain or reverse proxy in production). Cross-site deployments need an explicit SameSite/CSRF design. Logout revokes refresh immediately; already-issued access JWT remains valid up to 15 minutes. Web Locks serialize cookie rotation across tabs on supported secure contexts, with per-tab single-flight as fallback. Tokens remain in memory.
 
 ### Workspace/project API
 

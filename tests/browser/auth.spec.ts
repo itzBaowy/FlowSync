@@ -24,6 +24,37 @@ test('account creation, reload, responsive dashboard, theme, and logout', async 
     await expect(page.getByText('Connected', { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Welcome, Long.' })).toBeVisible();
+    const context = page.context();
+    const tabs = await Promise.all([context.newPage(), context.newPage()]);
+    let activeRefreshes = 0;
+    let maximumRefreshes = 0;
+    let refreshCount = 0;
+    await context.route('**/api/auth/refresh', async (route) => {
+      activeRefreshes++;
+      refreshCount++;
+      maximumRefreshes = Math.max(maximumRefreshes, activeRefreshes);
+      try {
+        // Hold the request long enough for all three tabs to request the shared cookie.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const response = await route.fetch();
+        await route.fulfill({ response });
+      } finally {
+        activeRefreshes--;
+      }
+    });
+    try {
+      await Promise.all([page.reload(), ...tabs.map((tab) => tab.goto('/dashboard'))]);
+      for (const tab of [page, ...tabs])
+        await expect(tab.getByRole('heading', { name: 'Welcome, Long.' })).toBeVisible();
+      expect(refreshCount).toBe(3);
+      expect(maximumRefreshes).toBe(1);
+      for (const tab of tabs) await tab.reload();
+      for (const tab of tabs)
+        await expect(tab.getByRole('heading', { name: 'Welcome, Long.' })).toBeVisible();
+    } finally {
+      await context.unroute('**/api/auth/refresh');
+      await Promise.all(tabs.map((tab) => tab.close()));
+    }
     await page.screenshot({ path: 'docs/screenshots/dashboard.png', fullPage: true });
     await page.getByRole('button', { name: 'Toggle color theme' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
