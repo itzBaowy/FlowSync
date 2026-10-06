@@ -9,7 +9,7 @@
 | 5 — Realtime (hoàn thành)            | Socket.IO auth + Redis adapter, board rooms, notification, presence           | Hai browser nhận update; reconnect/gap recovery; room permission + token expiry đã kiểm tra      |
 | 6 — Collaboration / MVP (hoàn thành) | Comments/mentions, activity, attachments, search, inbox, personal tasks       | Flow mục 34 chạy end-to-end; mention notifications, download permission, MIME/size checks đạt    |
 | 7 — Queue hardening (hoàn thành)     | Notification/due/file workers, retry, failed-job tooling, scoped maintenance  | SMTP recovery, duplicate jobs, stale versions, private recipients và Docker đã kiểm tra          |
-| 8 — AI                               | Provider abstraction, summary/overdue, meeting-note suggestions               | Validated JSON, context tenant scoped, confirmation trước task creation                          |
+| 8 — AI (implementation hoàn thành)   | Provider abstraction, summary/overdue, meeting-note suggestions               | JSON/context/confirmation/retry đạt; live provider smoke cần configured key                      |
 | 9 — Production                       | Staging/prod deploy, TLS, monitoring, backups, security review                | Restore rehearsal, migration rollback plan, load test, deployment smoke test                     |
 
 Mỗi phase làm theo module, có migration khi thay đổi dữ liệu và giữ toàn bộ checks trước đó xanh. Phase 1 không expose endpoint CRUD cho domain còn lại chỉ vì schema đã có entity. Không tự động publish/deploy khi chưa có môi trường và cấu hình thật.
