@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FlowSync - Launch board</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-surface": "#2e3132",
+            "on-primary-fixed": "#140067",
+            "inverse-primary": "#c5c0ff",
+            "surface-bright": "#f8f9fb",
+            "on-primary-container": "#e3dfff",
+            "on-tertiary-fixed-variant": "#763300",
+            "on-primary": "#ffffff",
+            "tertiary-fixed-dim": "#ffb68d",
+            "primary": "#422ec9",
+            "primary-fixed": "#e3dfff",
+            "on-secondary-fixed-variant": "#2c4d3f",
+            "tertiary": "#803800",
+            "on-secondary-fixed": "#002116",
+            "on-surface-variant": "#474555",
+            "surface-variant": "#e1e2e4",
+            "on-tertiary-container": "#ffdbca",
+            "tertiary-container": "#a54a00",
+            "on-tertiary-fixed": "#331200",
+            "on-secondary": "#ffffff",
+            "primary-container": "#5b4ce2",
+            "on-surface": "#191c1e",
+            "error-container": "#ffdad6",
+            "tertiary-fixed": "#ffdbc9",
+            "secondary": "#446556",
+            "outline": "#787586",
+            "on-primary-fixed-variant": "#3c25c3",
+            "on-error": "#ffffff",
+            "surface-container-lowest": "#ffffff",
+            "surface": "#f8f9fb",
+            "secondary-fixed": "#c6ebd8",
+            "surface-tint": "#5445db",
+            "surface-container-high": "#e7e8ea",
+            "secondary-fixed-dim": "#aacfbc",
+            "on-tertiary": "#ffffff",
+            "on-background": "#191c1e",
+            "error": "#ba1a1a",
+            "outline-variant": "#c8c4d7",
+            "inverse-on-surface": "#f0f1f3",
+            "surface-container": "#edeef0",
+            "surface-dim": "#d9dadc",
+            "on-error-container": "#93000a",
+            "background": "#f8f9fb",
+            "secondary-container": "#c6ebd8",
+            "on-secondary-container": "#4a6b5c",
+            "surface-container-highest": "#e1e2e4",
+            "surface-container-low": "#f2f4f6",
+            "primary-fixed-dim": "#c5c0ff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Inter", "sans-serif"],
+            "display": ["Inter", "sans-serif"],
+            "body": ["Inter", "sans-serif"],
+            "label": ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    /* Custom subtle scrollbar styling for board columns and drawer */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d9dadc;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #c8c4d7;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body h-screen w-screen overflow-hidden flex flex-row antialiased selection:bg-primary-fixed selection:text-primary">
+<!-- ========================================================================= -->
+<!-- 1. PERSISTENT LEFT SIDEBAR (SideNavBar component from Shared Components)   -->
+<!-- ========================================================================= -->
+<aside class="w-64 h-full flex flex-col justify-between p-4 bg-surface-container-lowest border-r border-outline-variant shrink-0 z-40 select-none">
+<!-- Top Block: Brand + Workspace Switcher + Primary Navigation -->
+<div class="flex flex-col gap-5">
+<!-- Brand Logo / App Identity -->
+<div class="flex items-center gap-3 px-1 pt-1">
+<div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm shadow-primary/20">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">sync</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline text-base font-bold text-on-surface tracking-tight leading-tight">FlowSync</span>
+<span class="font-body text-xs text-on-surface-variant font-medium">Productivity Workspace</span>
+</div>
+</div>
+<!-- Workspace Switcher Card -->
+<div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/60 hover:border-outline-variant transition-colors duration-150 cursor-pointer group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-7 h-7 rounded-lg bg-primary-fixed text-primary flex items-center justify-center text-xs font-bold shrink-0">
+            AW
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-on-surface truncate group-hover:text-primary transition-colors">Alex's Workspace</span>
+<div class="flex items-center gap-1">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="text-[10px] font-semibold tracking-wider text-secondary uppercase">PRO PLAN</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-base">unfold_more</span>
+</div>
+<!-- Main Navigation Menu Tabs -->
+<nav class="flex flex-col gap-1 text-sm">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Projects -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">folder</span>
+<span>Projects</span>
+</a>
+<!-- Tasks (ACTIVE TAB) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary-fixed text-primary font-semibold transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="flex-1">Tasks</span>
+<span class="text-xs bg-primary-container text-on-primary px-1.5 py-0.5 rounded-full font-bold">12</span>
+</a>
+<!-- Team -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">group</span>
+<span>Team</span>
+</a>
+<!-- Analytics -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">bar_chart</span>
+<span>Analytics</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<!-- Recent Projects Sub-section -->
+<div class="pt-2 border-t border-outline-variant/60">
+<div class="flex items-center justify-between px-3 mb-2">
+<span class="text-[11px] font-semibold text-outline uppercase tracking-wider">Recent projects</span>
+<span class="material-symbols-outlined text-outline text-sm hover:text-on-surface cursor-pointer">add</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<a class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-low" href="#">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="truncate">Mobile App v2.4</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-low" href="#">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="truncate">Design System UI</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-low" href="#">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="truncate">Q3 Brand Campaign</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary bg-surface-container-low/80" href="#">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="truncate">Product Launch</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Bottom Sidebar Section (Help + User Avatar) -->
+<div class="flex flex-col gap-2 pt-3 border-t border-outline-variant/60">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors text-xs font-medium" href="#">
+<span class="material-symbols-outlined text-lg">help_outline</span>
+<span>Help &amp; Feedback</span>
+</a>
+<!-- User Profile Card -->
+<div class="flex items-center justify-between p-2 rounded-xl bg-surface-container-low border border-outline-variant/50">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-8 h-8 rounded-lg object-cover ring-1 ring-outline-variant" data-alt="Close up professional portrait of Alex Morgan, a tech product manager, smiling softly in a brightly lit modern office with soft-focus glass panels, cool gray tones, crisp corporate atmosphere, and vibrant violet accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZDSM5337WqxtJBvJNSCZ7iU-D6ACxdfb7BcICBx-TYKpFMq7IfZnN5bOjy9-s5pNqUV3v245On6cwfccf5Klqv6VVdUHPIfV_HQLud1hIjKCkJ_meNWwXaImJjh-FHx49Aonyx77SfK0PH3lvDUQzxiRpNfyb71eUtW9k6KPPGtpA6CKyjK72pNTLBoCdrOCniSk_1w-znpF32krTudOCVVKC-3pVil1D_SaFgj3qz557KJf_4wroY1CkwDTIgicOllS-aBqUtqA"/>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-on-surface truncate">Alex Morgan</span>
+<span class="text-[11px] text-outline truncate">alex.morgan@flowsync.io</span>
+</div>
+</div>
+<button class="p-1 rounded-md text-on-surface-variant hover:text-error hover:bg-surface-container transition-colors" title="Sign out">
+<span class="material-symbols-outlined text-lg">logout</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE CANVAS CONTAINER                                            -->
+<!-- ========================================================================= -->
+<div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-background">
+<!-- 2. Compact Top Toolbar (TopNavBar component pattern) -->
+<header class="h-12 w-full bg-surface-container-lowest border-b border-outline-variant px-6 flex items-center justify-between shrink-0 select-none z-30">
+<!-- Left: Breadcrumb trail -->
+<nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+<span class="hover:text-on-surface cursor-pointer">Workspace</span>
+<span class="text-outline-variant">/</span>
+<span class="hover:text-on-surface cursor-pointer">Product</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-semibold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+          Launch board
+        </span>
+</nav>
+<!-- Right: Search + Icon Actions + Quick Tools -->
+<div class="flex items-center gap-3">
+<!-- Quick search trigger -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-outline text-base">search</span>
+<input class="w-64 pl-8 pr-3 py-1.5 text-xs bg-surface-container-low border border-outline-variant rounded-lg text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Search tasks, boards (⌘K)..." type="text"/>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<!-- Notification Bell with count -->
+<button class="relative p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Notifications">
+<span class="material-symbols-outlined text-xl">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary-container ring-2 ring-surface-container-lowest"></span>
+</button>
+<!-- Quick filter icon -->
+<button class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Quick Filters">
+<span class="material-symbols-outlined text-xl">tune</span>
+</button>
+<!-- Theme Toggle -->
+<button class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Switch Theme">
+<span class="material-symbols-outlined text-xl">light_mode</span>
+</button>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<!-- User mini-pill -->
+<div class="flex items-center gap-2 pl-1 cursor-pointer">
+<img class="w-6 h-6 rounded-full object-cover ring-1 ring-outline-variant" data-alt="Micro avatar of team lead Alex Morgan in a crisp white studio setting with subtle deep slate background and modern geometric highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlERpuznyU-e7EcpNc51Y6L543nQrjERJIpFDquduposZtbyTML4hemvTkTdOnVgR1gyXGea0XcSZ-nAhvQpEPpbymVVwejlfKyNAJTVaMO6e3rrXyCe-oa4BKvxrXkoqnFuCiKtN_UtBEKlYgnsY8ZWlgg8GU6UQ_T-4b3M9pcCgbJD0IHvQSyduWy3kf4WZiC_I605sNw3lhFDbV8AwS6zjfIeocsh0PEOkdaj47GD8LPZoOk9AJTG34tsBkC_kDIUECmcZrnlo"/>
+</div>
+</div>
+</header>
+<!-- 3. Main Header Area & Board Switcher Tabs -->
+<div class="px-8 pt-5 pb-3 bg-surface-container-lowest border-b border-outline-variant shrink-0 select-none">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[11px] font-bold tracking-wider text-primary uppercase">PRODUCT ROADMAP • Q4 RELEASE</span>
+<h1 class="text-2xl font-headline font-bold text-on-surface tracking-tight mt-0.5">Launch board</h1>
+<p class="text-xs text-on-surface-variant mt-0.5">Track deliverables, cross-functional dependencies, and launch readiness for v2.4.</p>
+</div>
+<!-- Primary Actions Group -->
+<div class="flex items-center gap-2.5">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-base">file_upload</span>
+<span>Export</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-base">bolt</span>
+<span>Automations</span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary-container text-on-primary text-xs font-semibold shadow-sm shadow-primary/25 hover:bg-primary transition-all">
+<span class="material-symbols-outlined text-base">add</span>
+<span>New task</span>
+</button>
+</div>
+</div>
+<!-- Horizontal Board Switcher Tabs -->
+<div class="flex items-center gap-2 mt-4 pt-1">
+<button class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary-fixed text-primary text-xs font-semibold">
+<span class="material-symbols-outlined text-sm">view_kanban</span>
+<span>Product launch</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-xs font-medium transition-colors">
+<span class="material-symbols-outlined text-sm">table_rows</span>
+<span>Sprint backlog</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1 rounded-full border border-dashed border-outline text-outline hover:border-primary hover:text-primary text-xs font-medium transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>Create board</span>
+</button>
+</div>
+<!-- Board Metadata & Control Bar -->
+<div class="flex items-center justify-between mt-3 pt-3 border-t border-outline-variant/50 text-xs">
+<!-- Left: Live connectivity + Member Stack -->
+<div class="flex items-center gap-5">
+<!-- Live Indicator -->
+<div class="flex items-center gap-1.5 text-secondary text-xs font-medium">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+</span>
+<span>Live updates</span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant"></div>
+<!-- Member Initials Stack -->
+<div class="flex items-center gap-2">
+<span class="text-xs text-outline font-medium">Active now:</span>
+<div class="flex items-center -space-x-1.5">
+<span class="w-6 h-6 rounded-full bg-primary-fixed text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-lowest" title="Alex Morgan">AM</span>
+<span class="w-6 h-6 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-lowest" title="Sarah Chen">SC</span>
+<span class="w-6 h-6 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-lowest" title="Marcus Vance">MV</span>
+<span class="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-lowest">+3</span>
+</div>
+<button class="text-xs font-medium text-primary hover:underline ml-1">+ Invite</button>
+</div>
+</div>
+<!-- Right: Board Toolbar Filters -->
+<div class="flex items-center gap-2.5">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 text-outline text-sm top-1.5">filter_list</span>
+<select class="pl-6 pr-6 py-1 text-xs bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:border-primary font-medium">
+<option>Priority: All</option>
+<option>High only</option>
+<option>Medium only</option>
+<option>Low only</option>
+</select>
+</div>
+<select class="px-2.5 py-1 text-xs bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:border-primary font-medium">
+<option>All Columns (4)</option>
+<option>To do &amp; In progress</option>
+<option>Review &amp; Done</option>
+</select>
+<label class="flex items-center gap-1.5 text-xs text-on-surface-variant cursor-pointer select-none ml-1">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5" type="checkbox"/>
+<span>Show archived</span>
+</label>
+</div>
+</div>
+</div>
+<!-- ========================================================================= -->
+<!-- 4. KANBAN BOARD CANVAS + 5. RIGHT TASK DETAIL DRAWER (Viewport locked)    -->
+<!-- ========================================================================= -->
+<div class="flex-1 flex flex-row min-h-0 overflow-hidden">
+<!-- Horizontally Scrollable Board Columns Canvas -->
+<main class="flex-1 overflow-x-auto overflow-y-hidden p-6 flex flex-col justify-between">
+<div class="flex gap-5 h-full items-start">
+<!-- ----------------------------------------------------------------- -->
+<!-- COLUMN 1: TO DO                                                   -->
+<!-- ----------------------------------------------------------------- -->
+<div class="w-80 shrink-0 flex flex-col max-h-full bg-surface-container-low/70 rounded-xl border border-outline-variant/60 shadow-sm">
+<!-- Column Header -->
+<div class="p-3.5 flex items-center justify-between border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-outline"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface">To do</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">4</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">add</span></button>
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">more_horiz</span></button>
+</div>
+</div>
+<!-- Task Cards Stack (scrolls vertically inside column) -->
+<div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+<!-- Card 1 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary-fixed text-primary">Marketing</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Assets</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  App Store preview video &amp; hero screenshots
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error-container text-error">High</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Oct 28
+                    </span>
+</div>
+<div class="flex -space-x-1">
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-primary text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">AM</span>
+<span class="w-5 h-5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">SC</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Docs</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  Update API endpoint changelog for v2.4
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-fixed text-tertiary">Medium</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Nov 02
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">MV</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Legal</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  Privacy policy update compliance review
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">Low</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Nov 05
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">SC</span>
+</div>
+</div>
+</div>
+<!-- Add Task button -->
+<div class="p-2 border-t border-outline-variant/40">
+<button class="w-full py-1.5 rounded-lg border border-dashed border-outline-variant text-xs font-medium text-outline hover:text-on-surface hover:border-outline hover:bg-surface-container-lowest transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-base">add</span>
+<span>Add task</span>
+</button>
+</div>
+</div>
+<!-- ----------------------------------------------------------------- -->
+<!-- COLUMN 2: IN PROGRESS (Contains active selected task)            -->
+<!-- ----------------------------------------------------------------- -->
+<div class="w-80 shrink-0 flex flex-col max-h-full bg-surface-container-low/70 rounded-xl border border-outline-variant/60 shadow-sm">
+<!-- Column Header -->
+<div class="p-3.5 flex items-center justify-between border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface">In progress</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary-fixed text-primary">3</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">add</span></button>
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">more_horiz</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+<!-- Card 1 (Overdue) -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed">Design</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Frontend</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  Refactor component contrast tokens for WCAG AA
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error-container text-error">High</span>
+<span class="text-error font-medium flex items-center gap-0.5 bg-error-container/40 px-1 rounded">
+<span class="material-symbols-outlined text-xs">warning</span> Yesterday
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-primary text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">AM</span>
+</div>
+</div>
+<!-- Card 2 (SELECTED CARD with active violet ring) -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border-2 border-primary-container shadow-md ring-2 ring-primary-container/20 transition-all cursor-pointer relative">
+<div class="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-primary-container text-on-primary text-[9px] font-bold uppercase tracking-wider">
+                  Active
+                </div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary-fixed text-primary">Product</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed">Launch</span>
+</div>
+<span class="material-symbols-outlined text-primary text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-bold text-on-surface leading-snug text-primary">
+                  Onboarding flow telemetry &amp; funnel events
+                </h4>
+<div class="flex items-center gap-2 mt-2 text-[11px] text-on-surface-variant font-medium">
+<span class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-sm">check_box</span> 4/5 subtasks
+                  </span>
+</div>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error-container text-error">High</span>
+<span class="text-tertiary-container font-semibold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">schedule</span> Today, 5:00 PM
+                    </span>
+</div>
+<div class="flex -space-x-1">
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-primary text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">AM</span>
+<span class="w-5 h-5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">MV</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Engineering</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  Implement optimistic offline state synchronization
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-fixed text-tertiary">Medium</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Tomorrow
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">MV</span>
+</div>
+</div>
+</div>
+<div class="p-2 border-t border-outline-variant/40">
+<button class="w-full py-1.5 rounded-lg border border-dashed border-outline-variant text-xs font-medium text-outline hover:text-on-surface hover:border-outline hover:bg-surface-container-lowest transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-base">add</span>
+<span>Add task</span>
+</button>
+</div>
+</div>
+<!-- ----------------------------------------------------------------- -->
+<!-- COLUMN 3: REVIEW                                                  -->
+<!-- ----------------------------------------------------------------- -->
+<div class="w-80 shrink-0 flex flex-col max-h-full bg-surface-container-low/70 rounded-xl border border-outline-variant/60 shadow-sm">
+<div class="p-3.5 flex items-center justify-between border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary-container"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface">Review</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">2</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">add</span></button>
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">more_horiz</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+<!-- Card 1 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">QA</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-tertiary-fixed text-tertiary">Release</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  End-to-end regression testing on iOS 18 beta build
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error-container text-error">High</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Oct 26
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">SC</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 hover:border-primary/50 shadow-sm hover:shadow transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed">Design</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-outline text-base cursor-grab">drag_indicator</span>
+</div>
+<h4 class="text-xs font-semibold text-on-surface leading-snug group-hover:text-primary transition-colors">
+                  Marketing landing page interactive prototype approval
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-fixed text-tertiary">Medium</span>
+<span class="text-outline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Oct 27
+                    </span>
+</div>
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-primary text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">AM</span>
+</div>
+</div>
+</div>
+<div class="p-2 border-t border-outline-variant/40">
+<button class="w-full py-1.5 rounded-lg border border-dashed border-outline-variant text-xs font-medium text-outline hover:text-on-surface hover:border-outline hover:bg-surface-container-lowest transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-base">add</span>
+<span>Add task</span>
+</button>
+</div>
+</div>
+<!-- ----------------------------------------------------------------- -->
+<!-- COLUMN 4: DONE                                                    -->
+<!-- ----------------------------------------------------------------- -->
+<div class="w-80 shrink-0 flex flex-col max-h-full bg-surface-container-low/70 rounded-xl border border-outline-variant/60 shadow-sm">
+<div class="p-3.5 flex items-center justify-between border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface">Done</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-secondary-fixed text-on-secondary-fixed">2</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">add</span></button>
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface"><span class="material-symbols-outlined text-base">more_horiz</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+<!-- Card 1 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 opacity-90 hover:opacity-100 shadow-sm transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Security</span>
+<span class="flex items-center text-secondary text-[10px] font-semibold gap-0.5">
+<span class="material-symbols-outlined text-xs">check_circle</span> Verified
+                    </span>
+</div>
+<span class="material-symbols-outlined text-secondary text-base">done</span>
+</div>
+<h4 class="text-xs font-medium text-on-surface line-through text-outline">
+                  OAuth 2.0 PKCE auth flow audit &amp; token refresh
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">High</span>
+<span class="text-secondary font-medium">Completed Oct 20</span>
+</div>
+<span class="w-5 h-5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">MV</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/80 opacity-90 hover:opacity-100 shadow-sm transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed">Frontend</span>
+<span class="material-symbols-outlined text-secondary text-base">done</span>
+</div>
+<h4 class="text-xs font-medium text-on-surface line-through text-outline">
+                  Dark mode palette variables and asset export
+                </h4>
+<div class="flex items-center justify-between mt-3 pt-2.5 border-t border-outline-variant/40 text-[11px]">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">Medium</span>
+<span class="text-secondary font-medium">Completed Oct 22</span>
+</div>
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-primary text-[9px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest">AM</span>
+</div>
+</div>
+</div>
+<div class="p-2 border-t border-outline-variant/40">
+<button class="w-full py-1.5 rounded-lg border border-dashed border-outline-variant text-xs font-medium text-outline hover:text-on-surface hover:border-outline hover:bg-surface-container-lowest transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-base">add</span>
+<span>Add task</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 6. Collapsible compact controls below the board -->
+<div class="mt-4 pt-3 border-t border-outline-variant/40 flex items-center justify-between text-xs text-outline select-none shrink-0">
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-1.5 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">settings</span>
+<span>Board settings &amp; permissions</span>
+</button>
+<span class="text-outline-variant">•</span>
+<button class="flex items-center gap-1.5 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">label</span>
+<span>Manage project labels</span>
+</button>
+</div>
+<span class="text-[11px] font-medium text-outline">v2.4 Production Target: Nov 15, 2024</span>
+</div>
+</main>
+<!-- ===================================================================== -->
+<!-- 5. RIGHT-SIDE TASK DETAIL DRAWER (Docked, open for selected task)    -->
+<!-- ===================================================================== -->
+<aside class="w-[420px] shrink-0 h-full bg-surface-container-lowest border-l border-outline-variant flex flex-col z-30 shadow-lg select-none">
+<!-- Drawer Header -->
+<div class="p-4 border-b border-outline-variant flex items-center justify-between shrink-0">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container text-xs font-mono font-bold text-on-surface-variant">LAUNCH-142</span>
+<span class="text-xs text-outline font-medium">in</span>
+<span class="text-xs font-semibold text-primary">Product launch</span>
+</div>
+<div class="flex items-center gap-1.5">
+<!-- Status Dropdown inside Drawer -->
+<div class="relative">
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary-fixed text-primary text-xs font-bold hover:bg-primary-fixed/80 transition-colors">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span>In progress</span>
+<span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+</button>
+</div>
+<button class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container"><span class="material-symbols-outlined text-base">more_horiz</span></button>
+<button class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container" title="Close drawer"><span class="material-symbols-outlined text-base">close</span></button>
+</div>
+</div>
+<!-- Drawer Body (scrollable) -->
+<div class="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+<!-- Editable Task Title -->
+<div>
+<h2 class="text-lg font-bold font-headline text-on-surface leading-tight focus:outline-none">
+              Onboarding flow telemetry &amp; funnel events
+            </h2>
+</div>
+<!-- Properties Grid -->
+<div class="grid grid-cols-3 gap-y-3 gap-x-2 text-xs py-3 border-y border-outline-variant/50">
+<!-- Row 1: Assignees -->
+<span class="text-outline font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">group</span> Assignees
+            </span>
+<div class="col-span-2 flex items-center gap-1.5 flex-wrap">
+<div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/60">
+<span class="w-4 h-4 rounded-full bg-primary-fixed text-primary text-[8px] font-bold flex items-center justify-center">AM</span>
+<span class="text-xs font-medium text-on-surface">Alex Morgan</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/60">
+<span class="w-4 h-4 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[8px] font-bold flex items-center justify-center">MV</span>
+<span class="text-xs font-medium text-on-surface">Marcus Vance</span>
+</div>
+<button class="p-0.5 text-outline hover:text-primary"><span class="material-symbols-outlined text-sm">add_circle</span></button>
+</div>
+<!-- Row 2: Due Date -->
+<span class="text-outline font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">event</span> Due date
+            </span>
+<div class="col-span-2 flex items-center gap-1.5">
+<span class="font-semibold text-tertiary-container flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">schedule</span> Today, 5:00 PM
+              </span>
+<span class="text-[10px] text-outline">(EST)</span>
+</div>
+<!-- Row 3: Priority -->
+<span class="text-outline font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">flag</span> Priority
+            </span>
+<div class="col-span-2 flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-error-container text-error font-bold text-[10px]">High</span>
+</div>
+<!-- Row 4: Board -->
+<span class="text-outline font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">space_dashboard</span> Board
+            </span>
+<div class="col-span-2 text-on-surface font-semibold">
+              Launch board <span class="text-outline font-normal">/ Product launch</span>
+</div>
+<!-- Row 5: Labels -->
+<span class="text-outline font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">label</span> Labels
+            </span>
+<div class="col-span-2 flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary-fixed text-primary">Product</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed">Launch</span>
+<button class="text-[10px] font-medium text-outline hover:text-primary">+ Add label</button>
+</div>
+</div>
+<!-- Description Section -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface uppercase tracking-wider">Description</span>
+<button class="text-xs text-primary font-semibold hover:underline">Edit</button>
+</div>
+<div class="p-3 bg-surface-container-low rounded-xl text-xs text-on-surface leading-relaxed border border-outline-variant/40 space-y-2">
+<p>
+                Instrument core telemetry for onboarding steps (signup method selection, workspace configuration, team member invites).
+              </p>
+<p class="text-on-surface-variant">
+                Must follow the standardized schema defined in <span class="font-mono text-primary font-semibold">@flowsync/telemetry-core</span> with payload attributes for <code class="bg-surface-container px-1 py-0.5 rounded text-on-surface">tenant_id</code>, <code class="bg-surface-container px-1 py-0.5 rounded text-on-surface">experiment_bucket</code>, and step conversion latency.
+              </p>
+</div>
+</div>
+<!-- Subtasks / Checklist -->
+<div class="flex flex-col gap-2.5">
+<div class="flex items-center justify-between text-xs">
+<div class="flex items-center gap-2">
+<span class="font-bold text-on-surface uppercase tracking-wider">Subtasks</span>
+<span class="text-xs text-outline font-medium">(4/5)</span>
+</div>
+<span class="font-bold text-xs text-primary">80%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 80%;"></div>
+</div>
+<!-- Checklist Items -->
+<div class="flex flex-col gap-2 mt-1 text-xs">
+<label class="flex items-center gap-2.5 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="line-through text-outline">Define event payload schemas in telemetry spec</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="line-through text-outline">Implement client-side tracking helper hook</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="line-through text-outline">Verify staging event pipeline &amp; data integrity</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="line-through text-outline">Setup Amplitude dashboard &amp; funnel metrics</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer bg-primary-fixed/30 p-1 rounded-lg">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-semibold text-on-surface">QA staging event payload with data team</span>
+</label>
+</div>
+<button class="flex items-center gap-1.5 text-xs text-primary font-semibold mt-1 hover:underline">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>Add subtask</span>
+</button>
+</div>
+<!-- Activity & Comments Thread -->
+<div class="flex flex-col gap-3 pt-3 border-t border-outline-variant/50">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface uppercase tracking-wider">Activity &amp; Comments</span>
+<span class="text-[11px] text-outline font-medium">2 comments</span>
+</div>
+<!-- Comment 1: Sarah Chen -->
+<div class="flex gap-2.5 text-xs">
+<span class="w-6 h-6 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold flex items-center justify-center shrink-0">SC</span>
+<div class="flex-1 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/40">
+<div class="flex items-center justify-between mb-1">
+<span class="font-bold text-on-surface">Sarah Chen</span>
+<span class="text-[10px] text-outline">10:42 AM</span>
+</div>
+<p class="text-on-surface-variant leading-normal">
+                  Schema approved, ready for pipeline deployment. Make sure we throttle high-frequency mouse path events.
+                </p>
+</div>
+</div>
+<!-- Comment 2: Marcus Vance Reply -->
+<div class="flex gap-2.5 text-xs pl-3 border-l-2 border-outline-variant/40">
+<span class="w-6 h-6 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold flex items-center justify-center shrink-0">MV</span>
+<div class="flex-1 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/40">
+<div class="flex items-center justify-between mb-1">
+<span class="font-bold text-on-surface">Marcus Vance</span>
+<span class="text-[10px] text-outline">11:15 AM</span>
+</div>
+<p class="text-on-surface-variant leading-normal">
+                  Added 250ms debounce on all blur/input listeners. Running final checks now.
+                </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Footer: Quick Comment Input -->
+<div class="p-3 border-t border-outline-variant bg-surface-container-low/50 shrink-0">
+<div class="flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-primary-fixed text-primary text-[10px] font-bold flex items-center justify-center shrink-0">AM</span>
+<input class="flex-1 px-3 py-1.5 text-xs bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="Write a comment or type @ to mention..." type="text"/>
+<button class="p-1.5 rounded-lg bg-primary-container text-on-primary hover:bg-primary transition-colors flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-base">send</span>
+</button>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</body></html>

@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { useQueries } from '@tanstack/react-query';
 import { searchHitSchema, searchKindSchema } from '@flowsync/contracts';
 import { paged } from '@/lib/organizations';
+import { useSearchShortcut } from '@/hooks/use-search-shortcut';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Notice, Pager, selectClass } from './organization-ui';
@@ -12,6 +13,7 @@ export function GlobalSearch() {
   const id = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
+  useSearchShortcut(setOpen);
   const [search, setSearch] = useState('');
   const [term, setTerm] = useState('');
   const [type, setType] = useState('all');
@@ -33,8 +35,17 @@ export function GlobalSearch() {
   }, [open]);
   return (
     <>
-      <Button variant="ghost" size="icon" aria-label="Global search" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        aria-label="Global search"
+        onClick={() => setOpen(true)}
+        className="size-10 px-0 text-muted-foreground xl:w-60 xl:justify-start xl:border xl:border-border xl:bg-background xl:px-3"
+      >
         <Search size={18} />
+        <span className="hidden text-xs xl:inline">Search anything…</span>
+        <kbd className="ml-auto hidden rounded border border-border bg-card px-1.5 py-0.5 text-[9px] xl:inline">
+          Ctrl K
+        </kbd>
       </Button>
       <dialog
         ref={ref}

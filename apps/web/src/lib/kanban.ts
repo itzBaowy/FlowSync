@@ -19,6 +19,8 @@ export const kanbanKeys = [
   'comments',
   'activities',
   'attachments',
+  'dashboard',
+  'my-tasks',
 ];
 export function useKanbanAction() {
   const client = useQueryClient();

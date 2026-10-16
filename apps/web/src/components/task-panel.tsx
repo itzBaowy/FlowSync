@@ -51,7 +51,7 @@ export function TaskPanel({
       ref={dialog}
       onCancel={onClose}
       aria-labelledby={headingId}
-      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-black/50 sm:p-7"
+      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-dvh w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-5 text-foreground shadow-2xl backdrop:bg-black/30 backdrop:backdrop-blur-sm sm:p-7"
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 id={headingId} className="text-lg font-semibold">

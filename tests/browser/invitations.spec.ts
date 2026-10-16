@@ -47,6 +47,7 @@ test('SMTP invitation, matching-email registration, acceptance and replay reject
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/organizations?id=${org.id}`);
+    await page.getByRole('tab', { name: 'Invitations', exact: true }).click();
     await page.getByLabel('Invite email', { exact: true }).fill(invitedEmail);
     await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
     await expect(
@@ -93,9 +94,11 @@ test('SMTP invitation, matching-email registration, acceptance and replay reject
     await expect(memberPage.getByText('Your role: MEMBER', { exact: true })).toBeVisible();
     await expect(memberPage.getByLabel('Team name')).toBeDisabled();
     await page.goto(`/organizations?id=${org.id}`);
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     await expect(
       page.getByRole('article', { name: `Member ${invitedEmail}`, exact: true }),
     ).toBeVisible();
+    await page.getByRole('tab', { name: 'Invitations', exact: true }).click();
     await expect(
       page
         .getByRole('article', { name: `Invitation ${invitedEmail}`, exact: true })

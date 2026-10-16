@@ -43,6 +43,7 @@ export function useOrganizationAction(id?: string) {
         client.invalidateQueries({ queryKey: ['organization', id] }),
         client.invalidateQueries({ queryKey: ['members', id] }),
         client.invalidateQueries({ queryKey: ['invitations', id] }),
+        client.invalidateQueries({ queryKey: ['dashboard'] }),
       ]);
       toast.success(message);
     },

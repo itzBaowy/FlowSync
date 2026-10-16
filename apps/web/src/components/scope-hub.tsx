@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Folder, Plus } from 'lucide-react';
+import { Folder, Plus } from 'lucide-react';
 import { z } from 'zod';
 import {
   organizationSchema,
@@ -23,7 +23,8 @@ import { errorMessage, paged } from '@/lib/organizations';
 import { useScopeAction } from '@/lib/scopes';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { AccountControls } from './account-controls';
+import { WorkspaceShell } from './workspace-shell';
+import { WorkspaceSectionTabs } from './workspace-section-tabs';
 import { ActivityFeed } from './activity-feed';
 import { ProjectAssistant } from './project-assistant';
 import { Confirm, Field, Notice, Pager, selectClass } from './organization-ui';
@@ -160,15 +161,11 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
     ? `/organizations?id=${parentId}`
     : `/workspaces?organizationId=${parent.data && 'organizationId' in parent.data ? parent.data.organizationId : ''}&id=${parentId}`;
   return (
-    <div className="min-h-dvh">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-10">
-        <Link href={back} className="flex items-center gap-2 text-sm">
-          <ArrowLeft size={16} />
-          {parent.data?.name ?? 'Back to team'}
-        </Link>
-        <AccountControls />
-      </header>
-      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10">
+    <WorkspaceShell
+      title={isWorkspace ? 'Workspaces' : 'Projects'}
+      back={{ href: back, label: parent.data?.name ?? 'Back to team' }}
+    >
+      <main>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium tracking-widest text-muted-foreground">
@@ -217,7 +214,7 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
           </form>
         )}
         {parent.data && (
-          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[280px_1fr]">
+          <div className="mt-8 grid items-start gap-6 xl:grid-cols-[248px_minmax(0,1fr)]">
             <section
               aria-label={`${label} list`}
               className="min-w-0 rounded-xl border border-border bg-card p-5"
@@ -317,64 +314,117 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
               {selected && detail.isPending && <p>Loading {label.toLowerCase()}…</p>}
               {resource && (
                 <>
-                  <section className="rounded-xl border border-border bg-card p-6">
-                    <h2 className="text-xl font-semibold">{resource.name}</h2>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {resource.canManage
-                        ? 'You can manage this space.'
-                        : 'You have member access.'}
-                    </p>
-                    <form
-                      key={`${resource.id}-${resource.updatedAt}`}
-                      onSubmit={(event) => void submit(event, false)}
-                      className="mt-5 space-y-4"
-                    >
-                      <ResourceFields
-                        kind={kind}
-                        resource={resource}
-                        disabled={!resource.canManage || action.isPending}
-                      />
-                      {resource.canManage && (
-                        <Button type="submit" disabled={action.isPending}>
-                          Save {label.toLowerCase()}
-                        </Button>
-                      )}
-                    </form>
-                    {isWorkspace && (
-                      <Button asChild className="mt-6" variant="outline">
-                        <Link href={`/projects?workspaceId=${resource.id}`}>Open projects</Link>
-                      </Button>
-                    )}
-                    {!isWorkspace && (
-                      <Button asChild className="mt-6" variant="outline">
-                        <Link href={`/boards?projectId=${resource.id}`}>Open boards</Link>
-                      </Button>
-                    )}
-                    {resource.canManage && (
-                      <div className="mt-6 border-t border-border pt-5">
-                        <Button
-                          variant="outline"
-                          className="text-destructive"
-                          disabled={action.isPending}
-                          onClick={() => setDeleting(true)}
-                        >
-                          Delete {label.toLowerCase()}
-                        </Button>
+                  <section className="rounded-xl border border-primary/15 bg-primary/5 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <h2 className="break-words text-xl font-semibold">{resource.name}</h2>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {isWorkspace
+                            ? 'A focused space for your team’s projects.'
+                            : 'Keep your team aligned and your work moving.'}
+                        </p>
                       </div>
-                    )}
+                      <Button asChild>
+                        <Link
+                          href={
+                            isWorkspace
+                              ? `/projects?workspaceId=${resource.id}`
+                              : `/boards?projectId=${resource.id}`
+                          }
+                        >
+                          {isWorkspace ? 'Open projects' : 'Open boards'}
+                        </Link>
+                      </Button>
+                    </div>
                   </section>
-                  <ScopeMembers
-                    key={`${kind}-${resource.id}`}
-                    kind={kind}
-                    id={resource.id}
-                    parentId={
-                      'workspaceId' in resource ? resource.workspaceId : resource.organizationId
-                    }
-                    canManage={resource.canManage}
-                    ownerId={'ownerId' in resource ? resource.ownerId : undefined}
+                  <WorkspaceSectionTabs
+                    key={resource.id}
+                    label={label + ' sections'}
+                    defaultTab={isWorkspace ? 'settings' : 'overview'}
+                    sections={[
+                      ...(!isWorkspace
+                        ? [
+                            {
+                              id: 'overview',
+                              label: 'Overview',
+                              content: <ProjectOverview id={resource.id} />,
+                            },
+                          ]
+                        : []),
+                      {
+                        id: 'members',
+                        label: 'Members',
+                        content: (
+                          <ScopeMembers
+                            key={`${kind}-${resource.id}`}
+                            kind={kind}
+                            id={resource.id}
+                            parentId={
+                              'workspaceId' in resource
+                                ? resource.workspaceId
+                                : resource.organizationId
+                            }
+                            canManage={resource.canManage}
+                            ownerId={'ownerId' in resource ? resource.ownerId : undefined}
+                          />
+                        ),
+                      },
+                      ...(!isWorkspace
+                        ? [
+                            {
+                              id: 'assistant',
+                              label: 'AI assistant',
+                              content: <ProjectAssistant projectId={resource.id} />,
+                            },
+                          ]
+                        : []),
+                      {
+                        id: 'settings',
+                        label: 'Settings',
+                        content: (
+                          <section
+                            id="scope-settings"
+                            className="scroll-mt-24 rounded-xl border border-border bg-card p-6"
+                          >
+                            <h2 className="text-base font-semibold">{label} settings</h2>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {resource.canManage
+                                ? 'You can manage this space.'
+                                : 'You have member access.'}
+                            </p>
+                            <form
+                              key={`${resource.id}-${resource.updatedAt}`}
+                              onSubmit={(event) => void submit(event, false)}
+                              className="mt-5 space-y-4"
+                            >
+                              <ResourceFields
+                                kind={kind}
+                                resource={resource}
+                                disabled={!resource.canManage || action.isPending}
+                              />
+                              {resource.canManage && (
+                                <Button type="submit" disabled={action.isPending}>
+                                  Save {label.toLowerCase()}
+                                </Button>
+                              )}
+                            </form>
+                            {resource.canManage && (
+                              <div className="mt-6 border-t border-border pt-5">
+                                <Button
+                                  variant="outline"
+                                  className="text-destructive"
+                                  disabled={action.isPending}
+                                  onClick={() => setDeleting(true)}
+                                >
+                                  Delete {label.toLowerCase()}
+                                </Button>
+                              </div>
+                            )}
+                          </section>
+                        ),
+                      },
+                    ]}
                   />
-                  {!isWorkspace && <ProjectOverview id={resource.id} />}
-                  {!isWorkspace && <ProjectAssistant key={resource.id} projectId={resource.id} />}
                 </>
               )}
             </div>
@@ -393,7 +443,7 @@ export function ScopeHub({ kind }: { kind: ScopeKind }) {
           onConfirm={() => void remove()}
         />
       </main>
-    </div>
+    </WorkspaceShell>
   );
 }
 function ResourceFields({

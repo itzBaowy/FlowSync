@@ -112,6 +112,7 @@ test('member roles, removal, invitation revocation and ownership controls', asyn
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/organizations?id=${org.id}`);
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     const removed = page.getByRole('article', {
       name: `Member removed-${suffix}@example.com`,
       exact: true,
@@ -133,6 +134,7 @@ test('member roles, removal, invitation revocation and ownership controls', asyn
     await member.getByLabel(`Role for ${memberEmail}`, { exact: true }).selectOption('ADMIN');
     await member.getByRole('button', { name: 'Save role' }).click();
     await expect(member.getByText('ADMIN', { exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Invitations', exact: true }).click();
     const invited = `invited-${suffix}@example.com`;
     await page.getByLabel('Invite email', { exact: true }).fill(invited);
     await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
@@ -141,11 +143,14 @@ test('member roles, removal, invitation revocation and ownership controls', asyn
     await invitation.getByRole('button', { name: 'Revoke invitation' }).click();
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
     await expect(invitation.getByText(/REVOKED/)).toBeVisible();
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     await member.getByRole('button', { name: 'Make owner' }).click();
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await page.getByRole('tab', { name: 'Settings', exact: true }).click();
     await expect(page.getByText('Your role: ADMIN', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Team name')).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Delete organization' })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Invitations', exact: true }).click();
     await expect(page.getByLabel('Invite role').locator('option')).toHaveCount(1);
     await memberPage.reload();
     await expect(memberPage.getByText('Your role: OWNER', { exact: true })).toBeVisible();

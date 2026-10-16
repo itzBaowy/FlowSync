@@ -31,6 +31,8 @@ export function useScopeAction() {
           'scope-parent',
           'scope-members',
           'project-overview',
+          'dashboard',
+          'my-tasks',
         ].map((key) => client.invalidateQueries({ queryKey: [key] })),
       );
       toast.success(message);

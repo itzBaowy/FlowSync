@@ -52,6 +52,7 @@ test('meeting-note preview requires selection and confirmation before creating r
       include: { columns: true },
     });
     await page.goto(`/projects?workspaceId=${workspace.id}&id=${projectId}`);
+    await page.getByRole('tab', { name: 'AI assistant', exact: true }).click();
     const assistant = page.getByRole('region', { name: 'Project assistant' });
     await expect(
       assistant.getByText('The assistant is unavailable. Contact your workspace admin.'),
@@ -99,6 +100,8 @@ test('meeting-note preview requires selection and confirmation before creating r
       });
     });
     await page.reload();
+    await page.getByRole('tab', { name: 'AI assistant', exact: true }).click();
+
     await assistant.getByLabel('Assistant mode').selectOption('MEETING_NOTES');
     await assistant
       .getByLabel('Meeting notes')

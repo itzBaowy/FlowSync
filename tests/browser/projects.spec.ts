@@ -64,9 +64,11 @@ test('workspace and project CRUD, date validation, overview and responsive layou
     await expect(page.getByRole('heading', { name: 'Launch Plan', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Project overview' })).toBeVisible();
     await expect(page.getByText('No activity recorded yet.')).toBeVisible();
+    await page.getByRole('tab', { name: 'Settings', exact: true }).click();
     await page.getByLabel('Project status').selectOption('ON_HOLD');
     await page.getByRole('button', { name: 'Save project' }).click();
     await page.reload();
+    await page.getByRole('tab', { name: 'Settings', exact: true }).click();
     await expect(page.getByLabel('Project status')).toHaveValue('ON_HOLD');
     await expect(page.getByLabel('Start date')).toHaveValue('2026-10-06');
     await page.screenshot({ path: 'docs/screenshots/projects.png', fullPage: true });
@@ -149,6 +151,7 @@ test('workspace and project membership gates, ownership transfer and access revo
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/workspaces?organizationId=${org.id}&id=${workspace.id}`);
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     await page.getByLabel('Find eligible people').fill(emails[1]!);
     await page
       .getByRole('article', { name: `Eligible person ${emails[1]}`, exact: true })
@@ -170,14 +173,22 @@ test('workspace and project membership gates, ownership transfer and access revo
     await memberPage.getByRole('link', { name: 'Open projects' }).click();
     await expect(memberPage.getByText('No projects found.', { exact: false })).toBeVisible();
     await page.getByRole('link', { name: 'Open projects' }).click();
-    await page.getByRole('link', { name: 'Private Release', exact: false }).click();
+    await page
+      .getByRole('main')
+      .getByRole('link', { name: 'Private Release', exact: false })
+      .click();
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     await page.getByLabel('Find eligible people').fill(emails[1]!);
     await page
       .getByRole('article', { name: `Eligible person ${emails[1]}`, exact: true })
       .getByRole('button', { name: 'Add to space' })
       .click();
     await memberPage.reload();
-    await memberPage.getByRole('link', { name: 'Private Release', exact: false }).click();
+    await memberPage
+      .getByRole('main')
+      .getByRole('link', { name: 'Private Release', exact: false })
+      .click();
+    await memberPage.getByRole('tab', { name: 'Settings', exact: true }).click();
     await expect(memberPage.getByLabel('Project name')).toBeDisabled();
     await page
       .getByRole('article', { name: `Space member ${emails[1]}`, exact: true })
@@ -190,10 +201,12 @@ test('workspace and project membership gates, ownership transfer and access revo
         .getByText('Owner', { exact: true }),
     ).toBeVisible();
     await memberPage.reload();
+    await memberPage.getByRole('tab', { name: 'Settings', exact: true }).click();
     await expect(memberPage.getByLabel('Project name')).toBeEnabled();
     await expect(
       memberPage.getByRole('button', { name: 'Create project', exact: true }),
     ).toHaveCount(0);
+    await memberPage.getByRole('tab', { name: 'Members', exact: true }).click();
     await memberPage
       .getByRole('article', { name: `Space member ${emails[0]}`, exact: true })
       .getByRole('button', { name: 'Make project owner' })
@@ -201,6 +214,7 @@ test('workspace and project membership gates, ownership transfer and access revo
     await memberPage.getByRole('button', { name: 'Confirm', exact: true }).click();
     await expect(memberPage.getByLabel('Project name')).toBeDisabled();
     await page.goto(`/workspaces?organizationId=${org.id}&id=${workspace.id}`);
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
     await page
       .getByRole('article', { name: `Space member ${emails[1]}`, exact: true })
       .getByRole('button', { name: 'Remove from space' })

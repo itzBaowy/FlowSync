@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { Plus, Radio } from 'lucide-react';
 import { taskPrioritySchema, taskSchema, type BoardSnapshot } from '@flowsync/contracts';
 import { paged } from '@/lib/organizations';
 import { useKanbanAction } from '@/lib/kanban';
@@ -48,38 +49,48 @@ export function TaskBoard({ board }: { board: BoardSnapshot }) {
   });
   return (
     <div className="space-y-5">
-      <p className="text-xs text-muted-foreground" aria-label="Realtime status">
-        {realtime === 'live'
-          ? 'Live updates connected'
-          : realtime === 'revoked'
-            ? 'Board access revoked'
-            : realtime === 'connecting'
-              ? 'Connecting live updates...'
-              : 'Live updates disconnected. Reconnecting...'}
-      </p>
-      {presence && (
-        <div
-          aria-label="Online board members"
-          className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+      <div className="flex flex-wrap items-center gap-3">
+        <p
+          className="flex items-center gap-2 text-[11px] text-muted-foreground"
+          aria-label="Realtime status"
         >
-          <span>{presence.totalOnline} online</span>
-          {presence.members.map((member) => (
-            <span
-              key={member.id}
-              className="flex items-center gap-1 rounded-full border border-border px-2 py-1"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              {member.name}
-            </span>
-          ))}
-        </div>
-      )}
+          <Radio
+            size={13}
+            className={realtime === 'live' ? 'text-success' : 'text-muted-foreground'}
+          />
+          {realtime === 'live'
+            ? 'Live updates connected'
+            : realtime === 'revoked'
+              ? 'Board access revoked'
+              : realtime === 'connecting'
+                ? 'Connecting live updates...'
+                : 'Live updates disconnected. Reconnecting...'}
+        </p>
+        {presence && (
+          <div
+            aria-label="Online board members"
+            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+          >
+            <span>{presence.totalOnline} online</span>
+            {presence.members.map((member) => (
+              <span
+                key={member.id}
+                className="flex items-center gap-1 rounded-full border border-border px-2 py-1"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                {member.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       {realtime === 'revoked' ? (
         <Notice error="You no longer have access to this board." />
       ) : (
         <>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
             <Button onClick={() => setCreating(!creating)} disabled={board.columns.length === 0}>
+              <Plus size={16} />
               New task
             </Button>
             <Input

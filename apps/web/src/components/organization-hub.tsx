@@ -3,13 +3,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Building2, ArrowLeft, Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { organizationInputSchema, organizationSchema } from '@flowsync/contracts';
 import { ApiError, api, refreshSession } from '@/lib/api';
 import { paged, useOrganizationAction, errorMessage } from '@/lib/organizations';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { AccountControls } from './account-controls';
+import { WorkspaceShell } from './workspace-shell';
+import { WorkspaceSectionTabs } from './workspace-section-tabs';
 import { Field, Notice, Pager, selectClass } from './organization-ui';
 import { OrganizationSettings } from './organization-settings';
 import { OrganizationMembers } from './organization-members';
@@ -83,21 +84,14 @@ export function OrganizationHub() {
       </main>
     );
   return (
-    <div className="min-h-dvh">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-10">
-        <Link href="/dashboard" className="flex items-center gap-2 text-sm">
-          <ArrowLeft size={16} />
-          Overview
-        </Link>
-        <AccountControls />
-      </header>
-      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-10">
+    <WorkspaceShell title="Organizations">
+      <main>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium tracking-widest text-muted-foreground">
-              PEOPLE & SHARED PURPOSE
+              YOUR TEAM STARTS HERE
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Your organizations</h1>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Your organizations</h1>
             <p className="mt-3 text-sm text-muted-foreground">
               A home for your team. Choose an organization to manage people and settings.
             </p>
@@ -142,7 +136,7 @@ export function OrganizationHub() {
             </Button>
           </form>
         )}
-        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="mt-8 grid items-start gap-6 xl:grid-cols-[248px_minmax(0,1fr)]">
           <section
             aria-label="Organization list"
             className="min-w-0 rounded-xl border border-border bg-card p-5"
@@ -224,32 +218,61 @@ export function OrganizationHub() {
             <Notice error={organization.error} />
             {organization.data && (
               <>
-                <OrganizationSettings
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary/15 bg-primary/5 p-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
+                      <Building2 size={21} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{organization.data.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        People, projects, and a shared purpose.
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild>
+                    <Link href={`/workspaces?organizationId=${organization.data.id}`}>
+                      Open workspaces
+                    </Link>
+                  </Button>
+                </div>
+                <WorkspaceSectionTabs
                   key={organization.data.id}
-                  organization={organization.data}
-                  onDeleted={() => router.replace('/organizations')}
+                  label="Organization sections"
+                  defaultTab="settings"
+                  sections={[
+                    {
+                      id: 'settings',
+                      label: 'Settings',
+                      content: (
+                        <OrganizationSettings
+                          organization={organization.data}
+                          onDeleted={() => router.replace('/organizations')}
+                        />
+                      ),
+                    },
+                    {
+                      id: 'members',
+                      label: 'Members',
+                      content: <OrganizationMembers organization={organization.data} />,
+                    },
+                    ...(organization.data.role === 'OWNER' ||
+                    (organization.data.role === 'ADMIN' && organization.data.allowAdminInvites)
+                      ? [
+                          {
+                            id: 'invitations',
+                            label: 'Invitations',
+                            content: <OrganizationInvitations organization={organization.data} />,
+                          },
+                        ]
+                      : []),
+                  ]}
                 />
-                <Button asChild variant="outline">
-                  <Link href={`/workspaces?organizationId=${organization.data.id}`}>
-                    Open workspaces
-                  </Link>
-                </Button>
-                <OrganizationMembers
-                  key={`members-${organization.data.id}`}
-                  organization={organization.data}
-                />
-                {(organization.data.role === 'OWNER' ||
-                  (organization.data.role === 'ADMIN' && organization.data.allowAdminInvites)) && (
-                  <OrganizationInvitations
-                    key={`invitations-${organization.data.id}`}
-                    organization={organization.data}
-                  />
-                )}
               </>
             )}
           </section>
         </div>
       </main>
-    </div>
+    </WorkspaceShell>
   );
 }

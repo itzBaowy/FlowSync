@@ -17,11 +17,9 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { KanbanTaskCard } from './kanban-task-card';
 import type { BoardSnapshot, Task } from '@flowsync/contracts';
 import { useKanbanMove } from '@/lib/kanban';
 import { Button } from './ui/button';
@@ -92,7 +90,7 @@ export function KanbanCanvas({
     'board';
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[10px] leading-5 text-muted-foreground">
         Drag the task handle to reorder or change columns. Keyboard: Space to pick up, arrow keys to
         move, Space to drop, Escape to cancel.
       </p>
@@ -131,7 +129,12 @@ export function KanbanCanvas({
         }}
         onDragEnd={drop}
       >
-        <div className="flex min-w-0 gap-4 overflow-x-auto pb-5" aria-label="Kanban columns">
+        <div
+          className="flex min-w-0 gap-4 overflow-x-auto pb-5"
+          tabIndex={0}
+          role="region"
+          aria-label="Kanban columns"
+        >
           {board.columns.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -173,10 +176,14 @@ function KanbanColumn({
     <section
       ref={setNodeRef}
       aria-label={column.name}
-      className={`w-72 shrink-0 space-y-3 rounded-xl border p-3 ${isOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}
+      className={`column-${column.kind.toLowerCase()} w-[292px] shrink-0 space-y-3 rounded-xl border p-3 ${isOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/50'}`}
     >
-      <h3 className="font-semibold">
-        {column.name} <span className="text-xs text-muted-foreground">{column.totalTasks}</span>
+      <h3 className="flex items-center gap-2 px-1 py-2 text-xs font-semibold">
+        <span aria-hidden="true" className="size-2 rounded-full bg-[var(--column-color)]" />
+        {column.name}{' '}
+        <span className="ml-1 rounded-md bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          {column.totalTasks}
+        </span>
       </h3>
       <SortableContext
         id={column.id}
@@ -184,7 +191,7 @@ function KanbanColumn({
         strategy={verticalListSortingStrategy}
       >
         {column.tasks.map((task) => (
-          <TaskCard key={task.id} task={task} pending={pending} onOpen={onOpen} />
+          <KanbanTaskCard key={task.id} task={task} pending={pending} onOpen={onOpen} />
         ))}
       </SortableContext>
       {column.tasks.length === 0 && (
@@ -198,80 +205,5 @@ function KanbanColumn({
         </Button>
       )}
     </section>
-  );
-}
-function TaskCard({
-  task,
-  pending,
-  onOpen,
-}: {
-  task: Task;
-  pending: boolean;
-  onOpen: (id: string) => void;
-}) {
-  const {
-    setNodeRef,
-    setActivatorNodeRef,
-    attributes,
-    listeners,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: 'task' },
-    disabled: pending || !task.canEdit,
-  });
-  return (
-    <article
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-        opacity: isDragging ? 0.35 : 1,
-      }}
-      className="rounded-lg border border-border bg-card p-3 shadow-sm"
-    >
-      <div className="flex items-start gap-2">
-        <button
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${task.title}`}
-          disabled={pending || !task.canEdit}
-          className="touch-none rounded p-1 text-muted-foreground focus-visible:outline-primary disabled:opacity-30"
-        >
-          <GripVertical size={16} />
-        </button>
-        <button
-          onClick={() => onOpen(task.id)}
-          className="min-w-0 flex-1 break-words text-left text-sm font-medium hover:text-primary"
-        >
-          {task.title}
-        </button>
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {task.priority}
-        {task.dueDate ? ` / Due ${task.dueDate.slice(0, 10)}` : ''}
-      </p>
-      {task.labels.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {task.labels.map((label) => (
-            <span
-              key={label.id}
-              className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px]"
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: label.color }} />
-              {label.name}
-            </span>
-          ))}
-        </div>
-      )}
-      {task.assignees.length > 0 && (
-        <p className="mt-2 truncate text-xs text-muted-foreground">
-          {task.assignees.map((user) => user.name).join(', ')}
-        </p>
-      )}
-    </article>
   );
 }

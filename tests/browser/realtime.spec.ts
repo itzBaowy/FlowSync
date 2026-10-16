@@ -250,6 +250,8 @@ test('two users receive board and task updates, recover on reconnect and lose re
     ).toContainText('Searchable delivery feedback');
     await searchDialog.getByRole('button', { name: 'Close search', exact: true }).click();
     await page.goto(`/projects?workspaceId=${workspace.id}&id=${project.id}`);
+    await page.getByRole('tab', { name: 'Members', exact: true }).click();
+
     await page
       .getByRole('article', { name: `Space member ${member.email}`, exact: true })
       .getByRole('button', { name: 'Remove from space', exact: true })
