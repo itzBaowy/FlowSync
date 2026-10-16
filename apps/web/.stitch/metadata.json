@@ -1,0 +1,20 @@
+{
+  "projectId": "1147826556671896586",
+  "title": "FlowSync — Workspace UI Redesign",
+  "deviceType": "DESKTOP",
+  "Last Sync Time": "2026-10-16T09:48:38.344Z",
+  "designSystem": "assets/3390103566712004395",
+  "screens": {
+    "overview": {
+      "id": "901a6e6a09c34a4dbf9dade0e7956d80",
+      "label": "FlowSync Overview Dashboard",
+      "sourceScreen": "projects/1147826556671896586/screens/901a6e6a09c34a4dbf9dade0e7956d80",
+      "width": "2560",
+      "height": "2048",
+      "canvasPosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  }
+}

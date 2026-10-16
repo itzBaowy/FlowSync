@@ -1,0 +1,78 @@
+{
+  "source": ".stitch/designs/overview.html",
+  "colors": {
+    "outline": "#787586",
+    "primary-container": "#5b4ce2",
+    "tertiary-fixed": "#ffdbc9",
+    "tertiary-container": "#a54a00",
+    "error-container": "#ffdad6",
+    "on-secondary": "#ffffff",
+    "on-surface-variant": "#474555",
+    "secondary": "#446556",
+    "on-primary": "#ffffff",
+    "secondary-fixed": "#c6ebd8",
+    "primary": "#422ec9",
+    "secondary-fixed-dim": "#aacfbc",
+    "on-primary-fixed": "#140067",
+    "outline-variant": "#c8c4d7",
+    "surface-container": "#edeef0",
+    "primary-fixed": "#e3dfff",
+    "surface-tint": "#5445db",
+    "on-tertiary-fixed-variant": "#763300",
+    "surface": "#f8f9fb",
+    "on-secondary-container": "#4a6b5c",
+    "on-secondary-fixed-variant": "#2c4d3f",
+    "on-secondary-fixed": "#002116",
+    "primary-fixed-dim": "#c5c0ff",
+    "surface-dim": "#d9dadc",
+    "on-tertiary": "#ffffff",
+    "on-surface": "#191c1e",
+    "on-background": "#191c1e",
+    "on-primary-fixed-variant": "#3c25c3",
+    "tertiary-fixed-dim": "#ffb68d",
+    "on-tertiary-container": "#ffdbca",
+    "surface-container-low": "#f2f4f6",
+    "inverse-on-surface": "#f0f1f3",
+    "surface-container-high": "#e7e8ea",
+    "on-error": "#ffffff",
+    "surface-container-highest": "#e1e2e4",
+    "on-primary-container": "#e3dfff",
+    "secondary-container": "#c6ebd8",
+    "surface-bright": "#f8f9fb",
+    "error": "#ba1a1a",
+    "on-tertiary-fixed": "#331200",
+    "on-error-container": "#93000a",
+    "inverse-primary": "#c5c0ff",
+    "tertiary": "#803800",
+    "surface-container-lowest": "#ffffff",
+    "inverse-surface": "#2e3132",
+    "surface-variant": "#e1e2e4",
+    "background": "#f8f9fb"
+  },
+  "borderRadius": {
+    "DEFAULT": "0.25rem",
+    "lg": "0.5rem",
+    "xl": "0.75rem",
+    "full": "9999px"
+  },
+  "fontFamily": {
+    "headline": [
+      "Inter",
+      "sans-serif"
+    ],
+    "display": [
+      "Inter",
+      "sans-serif"
+    ],
+    "body": [
+      "Inter",
+      "sans-serif"
+    ],
+    "label": [
+      "Inter",
+      "sans-serif"
+    ]
+  },
+  "spacing": "Tailwind default spacing scale",
+  "typography": "Inter 12px metadata, 14px body, 30?32px page titles"
+}
