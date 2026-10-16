@@ -1,4 +1,32 @@
 @import 'tailwindcss';
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-400.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-500.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-600.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/inter-700.ttf') format('truetype');
+}
 @custom-variant dark (&:is(.dark *));
 @theme inline {
   --color-background: var(--background);
@@ -11,19 +39,25 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
-  --font-sans: 'Segoe UI', Arial, Helvetica, sans-serif;
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --font-sans: 'Inter', 'Segoe UI', Arial, Helvetica, sans-serif;
 }
 :root {
-  --background: #fafbfc;
-  --foreground: #202432;
+  --background: #f7f8fa;
+  --foreground: #202330;
   --card: #fff;
-  --sidebar: #f6f7f9;
-  --border: #e5e7ed;
-  --primary: #6155d9;
+  --sidebar: #ffffff;
+  --border: #e8eaf0;
+  --primary: #5b4ce2;
   --primary-foreground: #fff;
-  --muted: #eff0f5;
-  --muted-foreground: #767c8d;
+  --muted: #f0f1f5;
+  --muted-foreground: #687083;
   --destructive: #c93545;
+  --success: #258363;
+  --warning: #a46616;
+  --info: #4479c7;
 }
 .dark {
   --background: #14161e;
@@ -36,6 +70,9 @@
   --muted: #272b38;
   --muted-foreground: #9a9fb0;
   --destructive: #fb7e8c;
+  --success: #70d7b0;
+  --warning: #efbd76;
+  --info: #8ab4f8;
 }
 body {
   margin: 0;
@@ -43,6 +80,72 @@ body {
   background: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+}
+html {
+  scroll-padding-top: 100px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  touch-action: manipulation;
+}
+summary {
+  list-style-position: inside;
+}
+summary:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.workspace-content h1 {
+  letter-spacing: -0.035em;
+}
+.workspace-content section.bg-card {
+  box-shadow: 0 2px 4px -3px #20233012;
+}
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+.priority-low {
+  color: var(--muted-foreground);
+}
+.priority-medium {
+  color: var(--info);
+}
+.priority-high {
+  color: var(--warning);
+}
+.priority-urgent {
+  color: var(--destructive);
+}
+.column-todo {
+  --column-color: var(--muted-foreground);
+}
+.column-in_progress {
+  --column-color: var(--info);
+}
+.column-review {
+  --column-color: var(--warning);
+}
+.column-done {
+  --column-color: var(--success);
 }
 button,
 a,
@@ -58,7 +161,7 @@ a:focus-visible {
   outline-offset: 4px;
 }
 ::selection {
-  background: #6155d930;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 meter {
   appearance: none;
