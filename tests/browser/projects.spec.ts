@@ -28,7 +28,7 @@ test('workspace and project CRUD, date validation, overview and responsive layou
     orgId = org.id;
     await page.goto('/login');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/organizations?id=${org.id}`);
@@ -147,7 +147,7 @@ test('workspace and project membership gates, ownership transfer and access revo
     });
     await page.goto('/login');
     await page.getByLabel('Work email').fill(emails[0]!);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/workspaces?organizationId=${org.id}&id=${workspace.id}`);
@@ -163,7 +163,7 @@ test('workspace and project membership gates, ownership transfer and access revo
     const memberPage = await context.newPage();
     await memberPage.goto(`${process.env.WEB_URL}/login`);
     await memberPage.getByLabel('Work email').fill(emails[1]!);
-    await memberPage.getByLabel('Password').fill(password);
+    await memberPage.getByLabel('Password', { exact: true }).fill(password);
     await memberPage.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(memberPage).toHaveURL(/\/dashboard$/);
     await memberPage.goto(

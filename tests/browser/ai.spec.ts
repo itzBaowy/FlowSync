@@ -17,7 +17,7 @@ test('meeting-note preview requires selection and confirmation before creating r
     await page.goto('/register');
     await page.getByLabel('Full name').fill('AI Owner');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill('browser-ai-test-password');
+    await page.getByLabel('Password', { exact: true }).fill('browser-ai-test-password');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     const user = await db.user.findUniqueOrThrow({ where: { email } });

@@ -56,23 +56,178 @@
     "full": "9999px"
   },
   "fontFamily": {
-    "headline": [
-      "Inter",
-      "sans-serif"
-    ],
-    "display": [
-      "Inter",
-      "sans-serif"
-    ],
-    "body": [
-      "Inter",
-      "sans-serif"
-    ],
-    "label": [
-      "Inter",
-      "sans-serif"
-    ]
+    "headline": ["Inter", "sans-serif"],
+    "display": ["Inter", "sans-serif"],
+    "body": ["Inter", "sans-serif"],
+    "label": ["Inter", "sans-serif"]
   },
   "spacing": "Tailwind default spacing scale",
-  "typography": "Inter 12px metadata, 14px body, 30?32px page titles"
+  "typography": "Inter: 12px metadata, 14px body, 30?32px page titles",
+  "screens": {
+    "overview": {
+      "source": ".stitch/designs/overview.html",
+      "colors": {
+        "outline": "#787586",
+        "primary-container": "#5b4ce2",
+        "tertiary-fixed": "#ffdbc9",
+        "tertiary-container": "#a54a00",
+        "error-container": "#ffdad6",
+        "on-secondary": "#ffffff",
+        "on-surface-variant": "#474555",
+        "secondary": "#446556",
+        "on-primary": "#ffffff",
+        "secondary-fixed": "#c6ebd8",
+        "primary": "#422ec9",
+        "secondary-fixed-dim": "#aacfbc",
+        "on-primary-fixed": "#140067",
+        "outline-variant": "#c8c4d7",
+        "surface-container": "#edeef0",
+        "primary-fixed": "#e3dfff",
+        "surface-tint": "#5445db",
+        "on-tertiary-fixed-variant": "#763300",
+        "surface": "#f8f9fb",
+        "on-secondary-container": "#4a6b5c",
+        "on-secondary-fixed-variant": "#2c4d3f",
+        "on-secondary-fixed": "#002116",
+        "primary-fixed-dim": "#c5c0ff",
+        "surface-dim": "#d9dadc",
+        "on-tertiary": "#ffffff",
+        "on-surface": "#191c1e",
+        "on-background": "#191c1e",
+        "on-primary-fixed-variant": "#3c25c3",
+        "tertiary-fixed-dim": "#ffb68d",
+        "on-tertiary-container": "#ffdbca",
+        "surface-container-low": "#f2f4f6",
+        "inverse-on-surface": "#f0f1f3",
+        "surface-container-high": "#e7e8ea",
+        "on-error": "#ffffff",
+        "surface-container-highest": "#e1e2e4",
+        "on-primary-container": "#e3dfff",
+        "secondary-container": "#c6ebd8",
+        "surface-bright": "#f8f9fb",
+        "error": "#ba1a1a",
+        "on-tertiary-fixed": "#331200",
+        "on-error-container": "#93000a",
+        "inverse-primary": "#c5c0ff",
+        "tertiary": "#803800",
+        "surface-container-lowest": "#ffffff",
+        "inverse-surface": "#2e3132",
+        "surface-variant": "#e1e2e4",
+        "background": "#f8f9fb"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "fontFamily": {
+        "headline": ["Inter", "sans-serif"],
+        "display": ["Inter", "sans-serif"],
+        "body": ["Inter", "sans-serif"],
+        "label": ["Inter", "sans-serif"]
+      }
+    },
+    "kanban": {
+      "source": ".stitch/designs/kanban.html",
+      "colors": {
+        "inverse-surface": "#2e3132",
+        "on-primary-fixed": "#140067",
+        "inverse-primary": "#c5c0ff",
+        "surface-bright": "#f8f9fb",
+        "on-primary-container": "#e3dfff",
+        "on-tertiary-fixed-variant": "#763300",
+        "on-primary": "#ffffff",
+        "tertiary-fixed-dim": "#ffb68d",
+        "primary": "#422ec9",
+        "primary-fixed": "#e3dfff",
+        "on-secondary-fixed-variant": "#2c4d3f",
+        "tertiary": "#803800",
+        "on-secondary-fixed": "#002116",
+        "on-surface-variant": "#474555",
+        "surface-variant": "#e1e2e4",
+        "on-tertiary-container": "#ffdbca",
+        "tertiary-container": "#a54a00",
+        "on-tertiary-fixed": "#331200",
+        "on-secondary": "#ffffff",
+        "primary-container": "#5b4ce2",
+        "on-surface": "#191c1e",
+        "error-container": "#ffdad6",
+        "tertiary-fixed": "#ffdbc9",
+        "secondary": "#446556",
+        "outline": "#787586",
+        "on-primary-fixed-variant": "#3c25c3",
+        "on-error": "#ffffff",
+        "surface-container-lowest": "#ffffff",
+        "surface": "#f8f9fb",
+        "secondary-fixed": "#c6ebd8",
+        "surface-tint": "#5445db",
+        "surface-container-high": "#e7e8ea",
+        "secondary-fixed-dim": "#aacfbc",
+        "on-tertiary": "#ffffff",
+        "on-background": "#191c1e",
+        "error": "#ba1a1a",
+        "outline-variant": "#c8c4d7",
+        "inverse-on-surface": "#f0f1f3",
+        "surface-container": "#edeef0",
+        "surface-dim": "#d9dadc",
+        "on-error-container": "#93000a",
+        "background": "#f8f9fb",
+        "secondary-container": "#c6ebd8",
+        "on-secondary-container": "#4a6b5c",
+        "surface-container-highest": "#e1e2e4",
+        "surface-container-low": "#f2f4f6",
+        "primary-fixed-dim": "#c5c0ff"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "fontFamily": {
+        "headline": ["Inter", "sans-serif"],
+        "display": ["Inter", "sans-serif"],
+        "body": ["Inter", "sans-serif"],
+        "label": ["Inter", "sans-serif"]
+      }
+    },
+    "auth": {
+      "source": ".stitch/designs/auth.html",
+      "colors": {
+        "brand": {
+          "DEFAULT": "#5b4ce2",
+          "hover": "#4b3cd0",
+          "subtle": "#e3dfff",
+          "light": "#f0edff",
+          "dark": "#3c25c3"
+        },
+        "surface": {
+          "DEFAULT": "#f7f8fa",
+          "card": "#ffffff",
+          "border": "#e5e7eb",
+          "borderDark": "#d1d5db"
+        },
+        "ink": {
+          "DEFAULT": "#191c1e",
+          "muted": "#5f6368",
+          "light": "#9aa0a6"
+        }
+      },
+      "fontFamily": {
+        "sans": ["Inter", "system-ui", "sans-serif"]
+      },
+      "borderRadius": {
+        "card": "0.75rem",
+        "btn": "0.5rem"
+      }
+    }
+  },
+  "semanticMapping": {
+    "primary": "primary-container (#5b4ce2)",
+    "background": "Project canvas (#f7f8fa)",
+    "card": "surface-container-lowest (#ffffff)",
+    "border": "Project hairline (#e8eaf0)",
+    "darkMode": "Semantic CSS variables in src/app/globals.css"
+  }
 }

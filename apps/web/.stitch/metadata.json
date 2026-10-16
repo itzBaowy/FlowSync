@@ -2,7 +2,7 @@
   "projectId": "1147826556671896586",
   "title": "FlowSync ? Workspace UI Redesign",
   "deviceType": "DESKTOP",
-  "Last Sync Time": "2026-10-16T09:58:02.155Z",
+  "Last Sync Time": "2026-10-16T10:05:35.468Z",
   "designSystem": "assets/3390103566712004395",
   "screens": {
     "overview": {
@@ -17,6 +17,14 @@
       "id": "6ed954fcd97f4297aa37f08fd2fa43e1",
       "label": "FlowSync Launch Board - Kanban",
       "sourceScreen": "projects/1147826556671896586/screens/6ed954fcd97f4297aa37f08fd2fa43e1",
+      "width": "2560",
+      "height": "2048",
+      "canvasPosition": null
+    },
+    "auth": {
+      "id": "caebe691d8514fce8aa1345dd8b7af67",
+      "label": "FlowSync Sign-In",
+      "sourceScreen": "projects/1147826556671896586/screens/caebe691d8514fce8aa1345dd8b7af67",
       "width": "2560",
       "height": "2048",
       "canvasPosition": null

@@ -43,7 +43,7 @@ test('SMTP invitation, matching-email registration, acceptance and replay reject
     orgId = org.id;
     await page.goto('/login');
     await page.getByLabel('Work email').fill(ownerEmail);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/organizations?id=${org.id}`);
@@ -83,7 +83,7 @@ test('SMTP invitation, matching-email registration, acceptance and replay reject
     await memberPage.getByRole('link', { name: 'Create an account', exact: true }).click();
     await memberPage.getByLabel('Full name').fill('Invited Member');
     await memberPage.getByLabel('Work email').fill(invitedEmail);
-    await memberPage.getByLabel('Password').fill(password);
+    await memberPage.getByLabel('Password', { exact: true }).fill(password);
     await memberPage.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(
       memberPage.getByRole('heading', { name: 'Join Invitation Browser Team' }),

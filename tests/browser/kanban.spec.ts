@@ -47,7 +47,7 @@ test('board management, task details, drag and drop, keyboard sorting and rollba
     });
     await page.goto('/login');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/projects?workspaceId=${workspace.id}&id=${project.id}`);

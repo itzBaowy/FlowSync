@@ -85,11 +85,16 @@ body {
 html {
   scroll-padding-top: 100px;
 }
+.auth-story {
+  background-color: var(--background);
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
 button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 button,
 a,

@@ -47,3 +47,16 @@ export const dashboardCopy = {
     { value: 'overdue', label: 'Overdue' },
   ] as const,
 };
+export const authCopy = {
+  eyebrow: 'A LITTLE LESS CHAOS. A LOT MORE FLOW.',
+  headline: ['Less busywork.', 'More possibility.'],
+  description: 'One shared space for your team, projects, and everything you’re moving forward.',
+  footer: 'Together, in flow.',
+  previewTitle: 'Your next great project',
+  previewLabel: 'A GLIMPSE OF YOUR WORKSPACE',
+  previewTasks: [
+    'Bring your best ideas together',
+    'Make the next step clear',
+    'Celebrate the small wins',
+  ],
+};

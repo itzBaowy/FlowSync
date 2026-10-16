@@ -1,90 +1,43 @@
 'use client';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  authSessionSchema,
-  registerSchema,
-  loginSchema,
-  type RegisterInput,
-  type LoginInput,
-} from '@flowsync/contracts';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowRight, Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { api, setAccessToken } from '@/lib/api';
-import { authDestination } from '@/lib/navigation';
+import { ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useAuthForm } from '@/hooks/use-auth-form';
+import { authCopy as copy } from '@/data/mockData';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Logo } from './logo';
 import { ThemeToggle } from './theme-toggle';
-
-export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
-  const registering = mode === 'register';
-  const router = useRouter();
-  const client = useQueryClient();
-  const destination = authDestination(useSearchParams().get('next'));
-  const [error, setError] = useState<string | null>(null);
-  const form = useForm<LoginInput | RegisterInput>({
-    resolver: zodResolver(registering ? registerSchema : loginSchema),
-    defaultValues: registering
-      ? { name: '', email: '', password: '' }
-      : { email: '', password: '' },
-  });
-  async function onSubmit(values: LoginInput | RegisterInput) {
-    setError(null);
-    try {
-      const session = authSessionSchema.parse(
-        await api<unknown>(`/auth/${mode}`, { method: 'POST', body: JSON.stringify(values) }),
-      );
-      setAccessToken(session.accessToken);
-      client.setQueryData(['session'], session);
-      toast.success(registering ? 'Your account is ready' : 'Welcome back');
-      router.replace(destination);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Something went wrong. Please try again.');
-    }
-  }
-  const errors = form.formState.errors as Partial<
-    Record<keyof RegisterInput, { message?: string }>
-  >;
+import { AuthPreview } from './auth-preview';
+interface AuthFormProps {
+  readonly mode: 'login' | 'register';
+}
+export function AuthForm({ mode }: AuthFormProps) {
+  const { form, errors, error, registering, destination, showPassword, togglePassword, onSubmit } =
+    useAuthForm(mode);
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1fr_1fr]">
-      <aside className="relative hidden flex-col justify-between bg-[#171b2a] p-12 text-white lg:flex xl:p-16">
+    <main className="grid min-h-dvh bg-card lg:grid-cols-[1.05fr_1fr]">
+      <aside className="auth-story relative hidden flex-col justify-between border-r border-border px-10 py-9 lg:flex xl:px-16">
         <Logo href="/login" />
-        <div className="max-w-lg">
-          <div className="mb-6 text-xs font-medium tracking-[.2em] text-indigo-300">
-            A LITTLE LESS CHAOS. A LOT MORE FLOW.
-          </div>
-          <h1 className="text-5xl font-semibold leading-[1.15] tracking-tight">
-            Great work starts
-            <br />
-            with a shared space.
-          </h1>
-          <p className="mt-6 max-w-sm text-lg leading-relaxed text-slate-400">
-            Bring your team, projects, and conversations together. Make room for what matters.
+        <div className="mx-auto w-full max-w-lg py-12">
+          <p className="mb-5 text-[9px] font-semibold tracking-[.18em] text-primary">
+            {copy.eyebrow}
           </p>
-          <div className="mt-10 space-y-4 text-sm text-slate-300">
-            {[
-              'A clear home for every project',
-              'Built for teams that move together',
-              'Thoughtful tools, without the noise',
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <Check size={16} className="text-indigo-300" />
-                {item}
-              </div>
-            ))}
-          </div>
+          <h1 className="text-[44px] font-semibold leading-[1.12] tracking-[-.05em] xl:text-[52px]">
+            {copy.headline[0]}
+            <br />
+            <span className="text-primary">{copy.headline[1]}</span>
+          </h1>
+          <p className="mt-5 max-w-sm text-sm leading-7 text-muted-foreground">
+            {copy.description}
+          </p>
+          <AuthPreview />
         </div>
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="h-px w-8 bg-slate-600" />
-          Your next great idea belongs here.
-        </div>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-success" />
+          {copy.footer}
+        </p>
       </aside>
-      <section className="relative flex flex-col px-6 py-6 sm:px-12">
+      <section className="relative flex flex-col px-6 py-7 sm:px-12">
         <header className="flex items-center justify-between">
           <div className="lg:invisible">
             <Logo href="/login" />
@@ -92,10 +45,10 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           <ThemeToggle />
         </header>
         <div className="m-auto w-full max-w-[380px] py-12">
-          <span className="mb-6 inline-flex rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
-            Welcome to your workspace
+          <span className="mb-4 inline-flex text-[10px] font-semibold uppercase tracking-[.13em] text-primary">
+            {registering ? 'YOUR NEXT CHAPTER' : 'WELCOME BACK'}
           </span>
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2 className="text-[32px] font-semibold tracking-[-.04em]">
             {registering ? 'Start something great.' : 'Back in your flow.'}
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -147,15 +100,27 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               <label className="mb-2 block text-sm font-medium" htmlFor="password">
                 Password
               </label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete={registering ? 'new-password' : 'current-password'}
-                placeholder={registering ? 'At least 12 characters' : 'Enter your password'}
-                {...form.register('password')}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-              />
+              <div className="relative">
+                <Input
+                  className="pr-12"
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={registering ? 'new-password' : 'current-password'}
+                  placeholder={registering ? 'At least 12 characters' : 'Enter your password'}
+                  {...form.register('password')}
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  onClick={togglePassword}
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground hover:text-primary"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {errors.password && (
                 <p id="password-error" className="mt-1.5 text-xs text-destructive">
                   {errors.password.message}
@@ -170,7 +135,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
                 {error}
               </p>
             )}
-            <Button type="submit" className="h-11 w-full" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="h-12 w-full" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
@@ -181,7 +146,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               )}
             </Button>
           </form>
-          <p className="mt-7 text-center text-sm text-muted-foreground">
+          <p className="mt-7 border-t border-border pt-6 text-center text-xs text-muted-foreground">
             {registering ? 'Already part of the team?' : 'New to FlowSync?'}{' '}
             <Link
               className="font-medium text-primary hover:underline"

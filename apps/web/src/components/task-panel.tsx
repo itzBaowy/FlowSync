@@ -53,7 +53,7 @@ export function TaskPanel({
       aria-labelledby={headingId}
       className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-dvh w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-5 text-foreground shadow-2xl backdrop:bg-black/30 backdrop:backdrop-blur-sm sm:p-7"
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="sticky -top-5 z-10 -mx-5 mb-5 flex items-center justify-between gap-3 border-b border-border bg-card px-5 pb-4 pt-5 sm:-top-7 sm:-mx-7 sm:px-7 sm:pt-7">
         <h2 id={headingId} className="text-lg font-semibold">
           Task details
         </h2>
@@ -66,8 +66,8 @@ export function TaskPanel({
       {task && (
         <div className="space-y-6">
           <p className="text-xs text-muted-foreground">
-            {task.status} / Version {task.version}
-            {task.archivedAt ? ' / Archived' : ''}
+            {task.status.toLowerCase().replaceAll('_', ' ')}
+            {task.archivedAt ? ' · Archived' : ''}
           </p>
           {task.canEdit && !task.archivedAt ? (
             <TaskForm

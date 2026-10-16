@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — FlowSync</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Material Symbols Outlined -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              DEFAULT: "#5b4ce2",
+              hover: "#4b3cd0",
+              subtle: "#e3dfff",
+              light: "#f0edff",
+              dark: "#3c25c3",
+            },
+            surface: {
+              DEFAULT: "#f7f8fa",
+              card: "#ffffff",
+              border: "#e5e7eb",
+              borderDark: "#d1d5db",
+            },
+            ink: {
+              DEFAULT: "#191c1e",
+              muted: "#5f6368",
+              light: "#9aa0a6",
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          borderRadius: {
+            'card': '0.75rem',
+            'btn': '0.5rem',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="h-full bg-surface text-ink antialiased">
+  <div class="min-h-full flex flex-col lg:flex-row">
+    
+    <!-- LEFT PANE: Brand Storytelling & UI Preview (Desktop only) -->
+    <section class="hidden lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between p-12 xl:p-16 bg-[#f4f5f8] border-r border-surface-border relative overflow-hidden select-none">
+      
+      <!-- Subtle background architectural grid accent -->
+      <div class="absolute inset-0 bg-[radial-gradient(#d4d7e1_1px,transparent_1px)] [background-size:20px_20px] opacity-60 pointer-events-none"></div>
+
+      <!-- Header: Logo & Badge -->
+      <div class="relative z-10">
+        <a href="#" class="inline-flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-lg">
+          <div class="h-10 w-10 rounded-lg bg-brand flex items-center justify-center text-white shadow-sm group-hover:bg-brand-hover transition-colors">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">sync</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl font-bold tracking-tight text-ink">FlowSync</span>
+            <span class="text-[11px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded bg-white text-ink-muted border border-surface-border">Productivity Workspace</span>
+          </div>
+        </a>
+
+        <!-- Headline & Value Proposition -->
+        <div class="mt-12 xl:mt-16 max-w-lg">
+          <h1 class="text-3xl xl:text-4xl font-bold tracking-tight text-ink leading-tight">
+            Less busywork.<br>More possibility.
+          </h1>
+          <p class="mt-4 text-sm xl:text-base text-ink-muted leading-relaxed font-normal">
+            Bring tasks, roadmaps, and sprint velocity into one coherent rhythm for high-performing product teams.
+          </p>
+        </div>
+      </div>
+
+      <!-- Miniature Product Preview (Pure UI, zero stock photos) -->
+      <div class="relative z-10 my-8 max-w-lg w-full">
+        <div class="bg-white rounded-card border border-surface-border shadow-md p-5 space-y-4">
+          
+          <!-- Widget Header: Sprint Velocity Context -->
+          <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-brand text-lg">flag</span>
+              <span class="font-semibold text-xs tracking-tight text-ink">Sprint 14</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">Active</span>
+            </div>
+            <div class="text-xs font-medium text-ink-muted">
+              <span class="font-bold text-ink">68%</span> completed
+            </div>
+          </div>
+
+          <!-- Velocity Progress Bar -->
+          <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div class="bg-brand h-full rounded-full transition-all duration-500" style="width: 68%;"></div>
+          </div>
+
+          <!-- Task Rows -->
+          <div class="space-y-2 pt-1">
+            <!-- Task 1: In Progress -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-gray-50/70 border border-surface-border hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="h-4 w-4 rounded border-2 border-brand flex items-center justify-center shrink-0">
+                  <div class="h-1.5 w-1.5 rounded-full bg-brand"></div>
+                </div>
+                <span class="text-xs font-medium text-ink truncate">Refactor component contrast tokens</span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-brand-subtle text-brand-dark flex items-center gap-1">
+                  <span class="h-1.5 w-1.5 rounded-full bg-brand animate-pulse"></span>
+                  In Progress
+                </span>
+                <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">High</span>
+              </div>
+            </div>
+
+            <!-- Task 2: Done -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-gray-50/70 border border-surface-border hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="material-symbols-outlined text-emerald-600 text-base shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                <span class="text-xs font-medium text-ink-muted line-through truncate">Onboarding flow telemetry</span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Completed</span>
+              </div>
+            </div>
+
+            <!-- Task 3: Todo -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-gray-50/70 border border-surface-border hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="h-4 w-4 rounded border border-gray-300 shrink-0"></div>
+                <span class="text-xs font-medium text-ink truncate">Update API changelog v2.4</span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-ink-muted">Todo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Team Avatars & Active Workspace Indicator -->
+          <div class="flex items-center justify-between pt-2 text-xs border-t border-surface-border">
+            <span class="text-[11px] font-medium text-ink-muted">Active collaborators</span>
+            <div class="flex items-center -space-x-1.5">
+              <div class="inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white bg-brand text-[10px] font-semibold text-white">AM</div>
+              <div class="inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white bg-emerald-600 text-[10px] font-semibold text-white">KP</div>
+              <div class="inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white bg-indigo-500 text-[10px] font-semibold text-white">MV</div>
+              <div class="inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white bg-gray-200 text-[10px] font-medium text-ink-muted">+2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Tagline Caption -->
+      <div class="relative z-10 flex items-center gap-2 text-xs font-medium text-ink-muted">
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        <span>Together, in flow.</span>
+      </div>
+    </section>
+
+    <!-- RIGHT PANE: Clean Authentication Form -->
+    <main class="w-full lg:w-1/2 xl:w-5/12 bg-white flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-16">
+      
+      <!-- Top Utility Bar: Theme toggle -->
+      <div class="flex items-center justify-between w-full">
+        <!-- Mobile-only logo display -->
+        <div class="lg:hidden flex items-center gap-2.5">
+          <div class="h-8 w-8 rounded-lg bg-brand flex items-center justify-center text-white shadow-sm">
+            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">sync</span>
+          </div>
+          <span class="text-lg font-bold tracking-tight text-ink">FlowSync</span>
+        </div>
+
+        <div class="ml-auto">
+          <button id="themeToggle" type="button" aria-label="Toggle visual theme" class="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <span class="material-symbols-outlined text-xl">light_mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Central Form Container (Max-width 380px) -->
+      <div class="w-full max-w-[380px] mx-auto my-auto py-8">
+        
+        <!-- Header -->
+        <div class="mb-8">
+          <span class="text-[11px] font-semibold tracking-wider uppercase text-brand">Welcome back</span>
+          <h2 class="mt-1.5 text-2xl font-bold tracking-tight text-ink">Back in your flow.</h2>
+          <p class="mt-2 text-sm text-ink-muted">Sign in to pick up where you left off.</p>
+        </div>
+
+        <!-- Authentication Form -->
+        <form class="space-y-4" onsubmit="event.preventDefault();">
+          
+          <!-- Work Email Input -->
+          <div>
+            <label for="work-email" class="block text-xs font-semibold text-ink mb-1.5">
+              Work email
+            </label>
+            <div class="relative">
+              <input 
+                type="email" 
+                id="work-email" 
+                name="email" 
+                value="alex.morgan@company.com"
+                required
+                autocomplete="email"
+                placeholder="name@company.com" 
+                class="w-full px-3.5 py-2.5 text-sm rounded-btn bg-white border border-surface-border text-ink placeholder:text-ink-light transition-all duration-150 focus:border-brand focus:ring-2 focus:ring-brand-subtle focus:outline-none"
+              >
+            </div>
+          </div>
+
+          <!-- Password Input with Show/Hide Toggle -->
+          <div>
+            <label for="password" class="block text-xs font-semibold text-ink mb-1.5">
+              Password
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="password" 
+                name="password"
+                required
+                autocomplete="current-password"
+                placeholder="Enter your password" 
+                class="w-full pl-3.5 pr-11 py-2.5 text-sm rounded-btn bg-white border border-surface-border text-ink placeholder:text-ink-light transition-all duration-150 focus:border-brand focus:ring-2 focus:ring-brand-subtle focus:outline-none"
+              >
+              <button 
+                type="button" 
+                id="togglePassword"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-ink-muted hover:text-ink focus:outline-none"
+                aria-label="Toggle password visibility"
+              >
+                <span id="togglePasswordIcon" class="material-symbols-outlined text-lg">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sign In Submit Button -->
+          <div class="pt-2">
+            <button 
+              type="submit" 
+              class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-btn bg-brand hover:bg-brand-hover text-white text-sm font-semibold shadow-sm transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand active:scale-[0.99]"
+            >
+              <span>Sign in</span>
+              <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
+          </div>
+
+        </form>
+
+        <!-- New to FlowSync / Registration Switch -->
+        <div class="mt-8 text-center text-xs text-ink-muted border-t border-surface-border pt-6">
+          <span>New to FlowSync?</span>
+          <a href="#" class="ml-1 text-brand hover:text-brand-hover font-semibold transition-colors focus:outline-none focus:underline">
+            Create an account
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Bottom spacing spacer for balanced vertical alignment -->
+      <div class="h-6 hidden sm:block"></div>
+
+    </main>
+  </div>
+
+  <!-- Interactive script for password reveal & subtle theme demo -->
+  <script>
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('togglePassword');
+    const toggleIcon = document.getElementById('togglePasswordIcon');
+
+    toggleButton.addEventListener('click', () => {
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      toggleIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+    });
+  </script>
+</body>
+</html>

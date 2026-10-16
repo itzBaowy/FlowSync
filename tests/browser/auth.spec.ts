@@ -13,11 +13,14 @@ test('account creation, reload, responsive dashboard, theme, and logout', async 
   try {
     await page.goto('/dashboard');
     await expect(page).toHaveURL('/login');
+    await expect(
+      page.getByRole('heading', { name: 'Back in your flow.', exact: true }),
+    ).toBeVisible();
     await page.screenshot({ path: 'docs/screenshots/login.png', fullPage: true });
     await page.getByRole('link', { name: 'Create an account', exact: true }).click();
     await page.getByLabel('Full name').fill('Long Nguyen');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill('browser-test-password-only');
+    await page.getByLabel('Password', { exact: true }).fill('browser-test-password-only');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await expect(page.getByRole('heading', { name: 'Welcome, Long.' })).toBeVisible();
@@ -77,7 +80,7 @@ test('account creation, reload, responsive dashboard, theme, and logout', async 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL('/login');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill('browser-test-password-only');
+    await page.getByLabel('Password', { exact: true }).fill('browser-test-password-only');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await expect(page.getByRole('heading', { name: 'Welcome, Long.' })).toBeVisible();

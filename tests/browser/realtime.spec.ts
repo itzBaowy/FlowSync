@@ -69,7 +69,7 @@ test('two users receive board and task updates, recover on reconnect and lose re
     ] as const) {
       await target.goto(`${process.env.WEB_URL}/login`);
       await target.getByLabel('Work email').fill(email);
-      await target.getByLabel('Password').fill(password);
+      await target.getByLabel('Password', { exact: true }).fill(password);
       await target.getByRole('button', { name: 'Sign in', exact: true }).click();
       await expect(target).toHaveURL(/\/dashboard$/);
       await target.goto(`${process.env.WEB_URL}/boards?projectId=${project.id}&id=${board.id}`);

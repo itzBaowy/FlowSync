@@ -15,7 +15,7 @@ test('organization creation, settings, private logo and confirmed deletion', asy
     await page.goto('/register');
     await page.getByLabel('Full name').fill('Team Owner');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill('browser-organization-password');
+    await page.getByLabel('Password', { exact: true }).fill('browser-organization-password');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.getByRole('link', { name: 'Organizations', exact: true }).click();
@@ -108,7 +108,7 @@ test('member roles, removal, invitation revocation and ownership controls', asyn
     organizationId = org.id;
     await page.goto('/login');
     await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL('/dashboard');
     await page.goto(`/organizations?id=${org.id}`);
@@ -123,7 +123,7 @@ test('member roles, removal, invitation revocation and ownership controls', asyn
     const memberPage = await memberContext.newPage();
     await memberPage.goto(`${process.env.WEB_URL}/login`);
     await memberPage.getByLabel('Work email').fill(memberEmail);
-    await memberPage.getByLabel('Password').fill(password);
+    await memberPage.getByLabel('Password', { exact: true }).fill(password);
     await memberPage.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(memberPage).toHaveURL(/\/dashboard$/);
     await memberPage.goto(`${process.env.WEB_URL}/organizations?id=${org.id}`);
