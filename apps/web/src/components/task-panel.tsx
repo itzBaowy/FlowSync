@@ -65,7 +65,7 @@ export function TaskPanel({
       {detail.isPending && <p role="status">Loading task...</p>}
       {task && (
         <div className="space-y-6">
-          <p className="text-xs text-muted-foreground">
+          <p aria-label="Task status" className="text-xs capitalize text-muted-foreground">
             {task.status.toLowerCase().replaceAll('_', ' ')}
             {task.archivedAt ? ' · Archived' : ''}
           </p>

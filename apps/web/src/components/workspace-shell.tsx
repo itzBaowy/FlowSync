@@ -38,7 +38,7 @@ export function WorkspaceShell({ children, title, back, wide = false }: Workspac
     loggingOut,
     logout,
     navigationRef,
-  } = useWorkspaceShell();
+  } = useWorkspaceShell(pathname === '/dashboard');
   if (session.isPending || unauthorized)
     return (
       <div className="flex min-h-dvh items-center justify-center">

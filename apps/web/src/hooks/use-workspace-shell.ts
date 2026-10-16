@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { dashboardSchema } from '@flowsync/contracts';
 import { toast } from 'sonner';
 import { ApiError, api, refreshSession, setAccessToken } from '@/lib/api';
-export function useWorkspaceShell() {
+export function useWorkspaceShell(loadDashboard: boolean) {
   const router = useRouter();
   const client = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,8 +20,9 @@ export function useWorkspaceShell() {
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => dashboardSchema.parse(await api('/dashboard')),
-    enabled: !!session.data,
-    refetchInterval: 30000,
+    // Other screens can read the cached project shortcuts without refetching
+    // every dashboard aggregate after each task or membership mutation.
+    enabled: !!session.data && loadDashboard,
   });
   const unauthorized = session.error instanceof ApiError && session.error.status === 401;
   useEffect(() => {

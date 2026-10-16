@@ -113,7 +113,7 @@ test('board management, task details, drag and drop, keyboard sorting and rollba
     await expect(panel.getByText('1 / 1 completed')).toBeVisible();
     await panel.getByLabel('Move to column').selectOption({ label: 'In progress' });
     await panel.getByRole('button', { name: 'Move task to end' }).click();
-    await expect(panel.getByText(/IN_PROGRESS \/ Version/)).toBeVisible();
+    await expect(panel.getByLabel('Task status', { exact: true })).toHaveText('in progress');
     await panel.getByRole('button', { name: 'Close task', exact: true }).click();
     await expect(canvas.getByRole('heading', { name: 'In progress 1' })).toBeVisible();
     await page.setViewportSize({ width: 1600, height: 1000 });

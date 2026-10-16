@@ -120,16 +120,6 @@ export function DashboardWork(_props: DashboardWorkProps) {
                 />
               </div>
               <select
-                aria-label="My task deadline"
-                className={`${selectClass} h-10 sm:max-w-36`}
-                value={due}
-                onChange={(event) => changeDue(event.target.value)}
-              >
-                <option value="all">All deadlines</option>
-                <option value="overdue">Overdue</option>
-                <option value="soon">Due in 7 days</option>
-              </select>
-              <select
                 aria-label="My task priority"
                 className={`${selectClass} h-10 sm:max-w-32`}
                 value={priority}

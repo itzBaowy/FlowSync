@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { hash } from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../apps/api/src/generated/prisma/client';
 
@@ -59,9 +58,14 @@ test('populated workspace filters, pagination, task links, keyboard tabs, and na
   const password = 'browser-design-password';
   let organizationId: string | undefined;
   try {
-    const user = await prisma.user.create({
-      data: { name: 'Alex Tran', email, passwordHash: await hash(password) },
-    });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/register');
+    await page.getByLabel('Full name').fill('Alex Tran');
+    await page.getByLabel('Work email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Create account', exact: true }).click();
+    await expect(page).toHaveURL('/dashboard');
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
     const org = await prisma.organization.create({
       data: {
         name: 'Product Studio',
@@ -164,11 +168,7 @@ test('populated workspace filters, pagination, task links, keyboard tabs, and na
         },
       ],
     });
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto('/login');
-    await page.getByLabel('Work email').fill(email);
-    await page.getByLabel('Password', { exact: true }).fill(password);
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.reload();
     const myTasks = page.getByRole('region', { name: 'My tasks', exact: true });
     await expect(myTasks.getByRole('link')).toHaveCount(6);
     await expect(page.getByLabel('Task completion percentage')).toHaveAttribute('value', '25');
@@ -178,6 +178,7 @@ test('populated workspace filters, pagination, task links, keyboard tabs, and na
       style: '[data-sonner-toaster] { visibility: hidden !important; }',
     });
     await page.getByRole('button', { name: 'Toggle color theme' }).click();
+    await expect(page.locator('html')).toHaveClass(/dark/);
     await page.screenshot({
       path: 'docs/screenshots/dashboard-populated-dark.png',
       fullPage: true,
@@ -207,9 +208,22 @@ test('populated workspace filters, pagination, task links, keyboard tabs, and na
     await search.getByRole('button', { name: 'Search', exact: true }).click();
     await expect(search.getByRole('link', { name: /Review onboarding wireframes/ })).toBeVisible();
     await page.keyboard.press('Escape');
+    let dashboardRequestsOnBoard = 0;
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/dashboard') dashboardRequestsOnBoard++;
+    });
     await myTasks.getByRole('link').click();
     const panel = page.getByRole('dialog', { name: 'Task details', exact: true });
     await expect(panel.getByLabel('Task title', { exact: true })).toHaveValue(titles[1]!);
+    const saved = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/tasks/${tasks[1]!.id}`) &&
+        response.request().method() === 'PATCH',
+    );
+    await panel.getByRole('button', { name: 'Save task', exact: true }).click();
+    expect((await saved).ok()).toBe(true);
+    await expect(panel.getByRole('button', { name: 'Save task', exact: true })).toBeEnabled();
+    expect(dashboardRequestsOnBoard).toBe(0);
     await expect
       .poll(() =>
         panel.evaluate((node) => Math.abs(node.getBoundingClientRect().right - innerWidth)),

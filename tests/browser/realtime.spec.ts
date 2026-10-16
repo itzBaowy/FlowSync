@@ -139,7 +139,7 @@ test('two users receive board and task updates, recover on reconnect and lose re
     );
     await ownerPanel.getByLabel('Move to column').selectOption({ label: 'Done' });
     await ownerPanel.getByRole('button', { name: 'Move task to end' }).click();
-    await expect(memberPanel.getByText(/DONE \/ Version/)).toBeVisible();
+    await expect(memberPanel.getByLabel('Task status', { exact: true })).toHaveText('done');
     await ownerPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await memberPanel.getByRole('button', { name: 'Close task', exact: true }).click();
     await expect(
